@@ -47,7 +47,7 @@
     "registry": "https://registry.npmjs.org/"
   },
   "devDependencies": {
-    "react-native-reanimated":  "2.4.1",
+    "react-native-reanimated": "^2.17.0",
     "react-native-vision-camera": "^2.13.1",
     "@commitlint/config-conventional": "^11.0.0",
     "@react-native-community/eslint-config": "^2.0.0",
