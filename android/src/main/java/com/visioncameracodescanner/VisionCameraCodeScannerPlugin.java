@@ -97,7 +97,9 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
         WritableNativeArray array = new WritableNativeArray();
         for (Barcode barcode : barcodes) {
-          array.pushMap(convertBarcode(barcode));
+          if (barcode.getRawValue() != null && !barcode.getRawValue().trim().isEmpty()) {
+            array.pushMap(convertBarcode(barcode));
+          }
         }
         return array;
       } catch (Exception e) {
