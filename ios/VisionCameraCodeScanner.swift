@@ -1,6 +1,9 @@
 import MLKitBarcodeScanning
 import MLKitVision
 
+import Vision
+import UIKit
+
 @objc(VisionCameraCodeScanner)
 class VisionCameraCodeScanner: NSObject, FrameProcessorPluginBase {
     
@@ -9,15 +12,39 @@ class VisionCameraCodeScanner: NSObject, FrameProcessorPluginBase {
     
     @objc
     public static func callback(_ frame: Frame!, withArgs args: [Any]!) -> Any! {
-        let image = VisionImage(buffer: frame.buffer)
-        image.orientation = .up
-        
+        // let image = VisionImage(buffer: frame.buffer)
+        // image.orientation = .up
+         guard let imageBuffer = CMSampleBufferGetImageBuffer(frame.buffer) else {
+          print("Failed to get image buffer from sample buffer.")
+          return nil
+        }
+
+        var ciImage = CIImage(cvPixelBuffer: imageBuffer)
+        guard let cgImage = CIContext().createCGImage(ciImage, from: ciImage.extent) else {
+            print("Failed to create bitmap from image.")
+            return nil
+        }
+       
+        let image = UIImage(cgImage: cgImage)
+        print("------VisionCameraCodeScanner--------")
+        detectBarcodes(in: image) { results in
+        for result in results {
+            print("Detected Barcode:")
+            print("Raw Value: \(result.rawValue)")
+            print("Format: \(result.format)")
+            print("Bounding Box: \(result.boundingBox)")
+            }
+        }
+        print("------END VisionCameraCodeScanner--------")
+        let visionImage = VisionImage(image: image)
+        visionImage.orientation = .up
+
         var barCodeAttributes: [Any] = []
         
         do {
             try self.createScanner(args)
             var barcodes: [Barcode] = []
-            barcodes.append(contentsOf: try barcodeScanner!.results(in: image))
+            barcodes.append(contentsOf: try barcodeScanner!.results(in: visionImage))
             
             if let options = args[1] as? [String: Any] {
                 let checkInverted = options["checkInverted"] as? Bool ?? false
@@ -25,7 +52,7 @@ class VisionCameraCodeScanner: NSObject, FrameProcessorPluginBase {
                     guard let buffer = CMSampleBufferGetImageBuffer(frame.buffer) else {
                         return nil
                     }
-                    let ciImage = CIImage(cvPixelBuffer: buffer)
+                    ciImage = CIImage(cvPixelBuffer: buffer)
                     guard let invertedImage = invert(src: ciImage) else {
                         return nil
                     }
@@ -120,5 +147,86 @@ class VisionCameraCodeScanner: NSObject, FrameProcessorPluginBase {
         guard let outputImage = filter.outputImage else { return nil }
         guard let outputImageCopy = context.createCGImage(outputImage, from: outputImage.extent) else { return nil }
         return UIImage(cgImage: outputImageCopy, scale: 1, orientation: .up)
+    }
+}
+
+
+// Struct to simulate Google ML Kit barcode result
+struct BarcodeResult {
+    let rawValue: String
+    let format: String
+    let boundingBox: CGRect
+}
+
+// Function to detect barcodes using Vision framework
+func detectBarcodes(in image: UIImage, completion: @escaping ([BarcodeResult]) -> Void) {
+    guard let cgImage = image.cgImage else {
+        completion([])
+        return
+    }
+    print("Detect barcodes function")
+    // Step 1: Create a VNDetectBarcodesRequest
+    let barcodeRequest = VNDetectBarcodesRequest { (request, error) in
+        guard error == nil else {
+            print("Barcode detection error: \(error?.localizedDescription ?? "Unknown error")")
+            completion([])
+            return
+        }
+
+        // Step 2: Process the barcode observations
+        var results: [BarcodeResult] = []
+        if let observations = request.results as? [VNBarcodeObservation] {
+            for observation in observations {
+                if let payload = observation.payloadStringValue {
+                    let format = getBarcodeFormat(from: observation.symbology)
+                    let result = BarcodeResult(rawValue: payload, format: format, boundingBox: observation.boundingBox)
+                    results.append(result)
+                }
+            }
+        }
+
+        // Step 3: Pass results to completion handler
+        completion(results)
+    }
+
+    // Step 4: Perform the request using a VNImageRequestHandler
+    let requestHandler = VNImageRequestHandler(cgImage: cgImage, options: [:])
+    do {
+        try requestHandler.perform([barcodeRequest])
+    } catch {
+        print("Failed to perform barcode detection: \(error.localizedDescription)")
+        completion([])
+    }
+}
+
+// Helper function to map Vision symbology to a string format similar to Google ML Kit
+func getBarcodeFormat(from symbology: VNBarcodeSymbology) -> String {
+    switch symbology {
+    case .ean8:
+        return "EAN-8"
+    case .ean13:
+        return "EAN-13"
+    case .upce:
+        return "UPC-E"
+    case .code39:
+        return "Code 39"
+    case .code39Checksum:
+        return "Code 39 Mod 43"
+    case .code93:
+        return "Code 93"
+    case .code128:
+        return "Code 128"
+    case .pdf417:
+        return "PDF417"
+    case .qr:
+        return "QR Code"
+    case .aztec:
+        return "Aztec"
+    case .itf14:
+        return "ITF-14"
+    case .i2of5Checksum:
+        return "Interleaved 2 of 5"
+    default:
+        return "Unknown"
     }
 }
