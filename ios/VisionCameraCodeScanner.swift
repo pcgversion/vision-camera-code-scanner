@@ -193,7 +193,7 @@ func detectBarcodes(in image: UIImage, completion: @escaping ([BarcodeResult]) -
         completion([])
         return
     }
-    print("Detect barcodes function")
+    //print("Detect barcodes function")
     // Step 1: Create a VNDetectBarcodesRequest
     let barcodeRequest = VNDetectBarcodesRequest { (request, error) in
         guard error == nil else {
