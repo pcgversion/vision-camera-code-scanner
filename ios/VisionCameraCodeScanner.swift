@@ -3,6 +3,14 @@ import MLKitVision
 
 import Vision
 import UIKit
+import CoreML
+import AVFoundation
+import Foundation
+import CoreMedia
+import CoreVideo
+import CoreImage
+import ImageIO
+import CoreML
 
 @objc(VisionCameraCodeScanner)
 class VisionCameraCodeScanner: NSObject, FrameProcessorPluginBase {
@@ -20,24 +28,45 @@ class VisionCameraCodeScanner: NSObject, FrameProcessorPluginBase {
         }
 
         var ciImage = CIImage(cvPixelBuffer: imageBuffer)
+        var curDeviceOrientation = UIDevice.current.orientation
+        let isLandscape = isDeviceInLandscapeWhenFaceUp()
+        //print("current Device Orientation: \(curDeviceOrientation) \(isLandscape)")
+        switch curDeviceOrientation {
+            case UIDeviceOrientation.portraitUpsideDown:  // Device oriented vertically, Home button on the top
+                ciImage = ciImage.oriented(forExifOrientation: 3)
+            case UIDeviceOrientation.landscapeLeft:       // Device oriented horizontally, Home button on the right
+                ciImage = ciImage.oriented(forExifOrientation: 3)
+            case UIDeviceOrientation.landscapeRight:      // Device oriented horizontally, Home button on the left
+                ciImage = ciImage.oriented(forExifOrientation: 3)
+            case UIDeviceOrientation.portrait:            // Device oriented vertically, Home button on the bottom
+                ciImage = ciImage.oriented(forExifOrientation: 1)
+            case UIDeviceOrientation.faceUp:
+            ciImage = ciImage.oriented(forExifOrientation: isLandscape ? 3 : 1)
+            case UIDeviceOrientation.faceDown:
+                ciImage = ciImage.oriented(forExifOrientation: isLandscape ? 3 : 1)
+            case UIDeviceOrientation.unknown:
+                ciImage = ciImage.oriented(forExifOrientation: 1)
+            default:
+                ciImage = ciImage.oriented(forExifOrientation: 1)
+        }
         guard let cgImage = CIContext().createCGImage(ciImage, from: ciImage.extent) else {
             print("Failed to create bitmap from image.")
             return nil
         }
        
         let image = UIImage(cgImage: cgImage)
-        print("------VisionCameraCodeScanner--------")
-        detectBarcodes(in: image) { results in
-        for result in results {
-            print("Detected Barcode:")
-            print("Raw Value: \(result.rawValue)")
-            print("Format: \(result.format)")
-            print("Bounding Box: \(result.boundingBox)")
-            }
-        }
-        print("------END VisionCameraCodeScanner--------")
+//         print("------VisionCameraCodeScanner--------")
+//         detectBarcodes(in: image) { results in
+//         for result in results {
+//             print("Detected Barcode:")
+//             print("Raw Value: \(result.rawValue)")
+//             print("Format: \(result.format)")
+//             print("Bounding Box: \(result.boundingBox)")
+//             }
+//         }
+//         print("------END VisionCameraCodeScanner--------")
         let visionImage = VisionImage(image: image)
-        visionImage.orientation = .up
+        visionImage.orientation = image.imageOrientation
 
         var barCodeAttributes: [Any] = []
         
@@ -229,4 +258,20 @@ func getBarcodeFormat(from symbology: VNBarcodeSymbology) -> String {
     default:
         return "Unknown"
     }
+}
+func isDeviceInLandscapeWhenFaceUp() -> Bool {
+    let orientation = UIDevice.current.orientation
+    // If the device is face up, check the interface orientation
+    if orientation == .faceUp {
+        // Get the current interface orientation
+        if #available(iOS 13.0, *), let interfaceOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation as? UIInterfaceOrientation{
+                return interfaceOrientation.isLandscape
+        }
+        // let interfaceOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
+        // if let interfaceOrientation = interfaceOrientation {
+        //     return interfaceOrientation.isLandscape
+        // }
+    }
+    // Otherwise, check if the current device orientation is landscape
+    return orientation == .landscapeLeft || orientation == .landscapeRight
 }
