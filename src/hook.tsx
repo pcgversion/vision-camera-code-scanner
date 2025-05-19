@@ -1,5 +1,5 @@
-import { Frame, useFrameProcessor } from 'react-native-vision-camera';
-import type { ReadonlyFrameProcessor } from 'react-native-vision-camera';
+import { useFrameProcessor } from 'react-native-vision-camera';
+import type { Frame, ReadonlyFrameProcessor } from 'react-native-vision-camera';
 import { useState } from 'react';
 import { Worklets } from 'react-native-worklets-core';
 
