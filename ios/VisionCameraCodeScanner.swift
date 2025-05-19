@@ -14,7 +14,7 @@ import ImageIO
 import CoreML
 
 @objc(VisionCameraCodeScanner)
-class VisionCameraCodeScanner: FrameProcessorPlugin {
+public class VisionCameraCodeScanner: FrameProcessorPlugin {
     
     static var barcodeScanner: BarcodeScanner?
     static var barcodeFormatOptionSet: BarcodeFormat = []
@@ -25,12 +25,16 @@ class VisionCameraCodeScanner: FrameProcessorPlugin {
         print("VisionCameraCodeScanner initialized with options: \(String(describing: options))")
     }
     
-    public override func callback(_ frame: Frame!, withArgs args: [Any]!) -> Any! {
+    public override func callback(_ frame: Frame, withArguments args: [AnyHashable : Any]?) -> Any {
+        
+        guard let argsArray = args?["args"] as? [Any] else {
+            return [:]
+        }
         // let image = VisionImage(buffer: frame.buffer)
         // image.orientation = .up
          guard let imageBuffer = CMSampleBufferGetImageBuffer(frame.buffer) else {
           print("Failed to get image buffer from sample buffer.")
-          return nil
+             return [:]
         }
 
         var ciImage = CIImage(cvPixelBuffer: imageBuffer)
@@ -57,7 +61,7 @@ class VisionCameraCodeScanner: FrameProcessorPlugin {
         }
         guard let cgImage = CIContext().createCGImage(ciImage, from: ciImage.extent) else {
             print("Failed to create bitmap from image.")
-            return nil
+            return [:]
         }
        
         let image = UIImage(cgImage: cgImage)
@@ -77,32 +81,32 @@ class VisionCameraCodeScanner: FrameProcessorPlugin {
         var barCodeAttributes: [Any] = []
         
         do {
-            try self.createScanner(args)
+            try Self.createScanner(argsArray)
             var barcodes: [Barcode] = []
-            barcodes.append(contentsOf: try barcodeScanner!.results(in: visionImage))
+            barcodes.append(contentsOf: try Self.barcodeScanner!.results(in: visionImage))
             
-            if let options = args[1] as? [String: Any] {
+            if let options = argsArray[1] as? [String: Any] {
                 let checkInverted = options["checkInverted"] as? Bool ?? false
                 if (checkInverted) {
                     guard let buffer = CMSampleBufferGetImageBuffer(frame.buffer) else {
-                        return nil
+                        return [:]
                     }
                     ciImage = CIImage(cvPixelBuffer: buffer)
-                    guard let invertedImage = invert(src: ciImage) else {
-                        return nil
+                    guard let invertedImage = Self.invert(src: ciImage) else {
+                        return [:]
                     }
-                    barcodes.append(contentsOf: try barcodeScanner!.results(in: VisionImage.init(image: invertedImage)))
+                    barcodes.append(contentsOf: try Self.barcodeScanner!.results(in: VisionImage.init(image: invertedImage)))
                 }
             }
             
             if (!barcodes.isEmpty){
                 for barcode in barcodes {
-                    barCodeAttributes.append(self.convertBarcode(barcode: barcode))
+                    barCodeAttributes.append(Self.convertBarcode(barcode: barcode))
                 }
             }
             
         } catch _ {
-            return nil
+            return [:]
         }
         
         return barCodeAttributes
