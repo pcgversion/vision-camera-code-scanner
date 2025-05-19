@@ -18,7 +18,7 @@ export function useScanBarcodes(
   const [frameWidth, setFrameWidth] = useState<number>(1);
   const [frameHeight, setFrameHeight] = useState<number>(1);
 
-  const frameProcessor: ReadonlyFrameProcessor = useFrameProcessor((frame: Frame) => {
+  const frameProcessor = useFrameProcessor((frame: Frame) => {
     'worklet';
     const detectedBarcodes = scanBarcodes(frame, types, options);
     Worklets.createRunOnJS(() => {
