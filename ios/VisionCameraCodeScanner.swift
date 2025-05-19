@@ -18,8 +18,13 @@ class VisionCameraCodeScanner: NSObject, FrameProcessorPluginBase {
     static var barcodeScanner: BarcodeScanner?
     static var barcodeFormatOptionSet: BarcodeFormat = []
     
-    @objc
-    public static func callback(_ frame: Frame!, withArgs args: [Any]!) -> Any! {
+    public override init(proxy: VisionCameraProxyHolder, options: [AnyHashable: Any]! = [:]) {
+        super.init(proxy: proxy, options: options)
+
+        print("VisionCameraCodeScanner initialized with options: \(String(describing: options))")
+    }
+    
+    public override func callback(_ frame: Frame!, withArgs args: [Any]!) -> Any! {
         // let image = VisionImage(buffer: frame.buffer)
         // image.orientation = .up
          guard let imageBuffer = CMSampleBufferGetImageBuffer(frame.buffer) else {
