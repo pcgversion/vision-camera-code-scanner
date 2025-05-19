@@ -1,5 +1,5 @@
 import { useFrameProcessor } from 'react-native-vision-camera';
-import type { Frame } from 'react-native-vision-camera';
+import type { Frame, ReadonlyFrameProcessor } from 'react-native-vision-camera';
 import { useState } from 'react';
 import { Worklets } from 'react-native-worklets-core';
 
@@ -13,7 +13,7 @@ import { scanBarcodes } from './common';
 export function useScanBarcodes(
   types: BarcodeFormat[],
   options?: CodeScannerOptions
-): [(frame: Frame) => void, Barcode[], number, number] {
+): [ReadonlyFrameProcessor, Barcode[], number, number] {
   const [barcodes, setBarcodes] = useState<Barcode[]>([]);
   const [frameWidth, setFrameWidth] = useState<number>(1);
   const [frameHeight, setFrameHeight] = useState<number>(1);
