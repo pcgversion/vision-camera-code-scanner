@@ -25,7 +25,7 @@ export default function App() {
     const data = scanBarcodes(frame, [BarcodeFormat.ALL_FORMATS], {
       checkInverted: true,
     });
-    Worklets.createRunOnJS(() => { setBarcodes(data) };
+    Worklets.createRunOnJS(() => { setBarcodes(data) });
   }, []);
 
   React.useEffect(() => {
