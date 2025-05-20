@@ -22,7 +22,7 @@
 
 + (void)load
 {
-    [FrameProcessorPluginRegistry addFrameProcessorPlugin:@"scanCodes"
+    [FrameProcessorPluginRegistry addFrameProcessorPlugin:@"scanBarcodes"
                                         withInitializer:^FrameProcessorPlugin* (VisionCameraProxyHolder* proxy, NSDictionary* options) {
         return [[VisionCameraCodeScanner alloc] initWithProxy:proxy withOptions:options];
     }];

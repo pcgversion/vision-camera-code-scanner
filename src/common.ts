@@ -290,6 +290,9 @@ export interface CodeScannerOptions {
   checkInverted?: boolean;
 }
 
+export type BarcodeScannerPlugin = {
+  scanBarcodes: (frame: Frame, types: BarcodeFormat[], options?: CodeScannerOptions ) => Barcode[];
+};
 
 /**
  * Scans barcodes in the passed frame with MLKit
@@ -298,19 +301,25 @@ export interface CodeScannerOptions {
  * @param types Array of barcode types to detect (for optimal performance, use less types)
  * @returns Detected barcodes from MLKit
  */
+
 export function scanBarcodes(
-  frame: Frame,
   types: BarcodeFormat[],
   options?: CodeScannerOptions
-): Barcode[] {
-  'worklet';
+): BarcodeScannerPlugin {
   // @ts-ignore
   // eslint-disable-next-line no-undef
   //return __scanCodes(frame, types, options);
-  const plugin = VisionCameraProxy.initFrameProcessorPlugin('scanCodes', { types, ...options }) ;
+  const plugin = VisionCameraProxy.initFrameProcessorPlugin('scanBarcodes', { types, options });
 
-   if (plugin == null)
-      throw new Error('Failed to load Frame Processor Plugin "scanCodes"!');
+  if (plugin == null)
+    throw new Error('Failed to load Frame Processor Plugin "scanCodes"!');
+ 
+  return {
+    scanBarcodes: (frame: Frame,  types: BarcodeFormat[], options?:CodeScannerOptions ): Barcode[] => {
+      'worklet';
+      // @ts-ignore
+      return plugin.call(frame, types, options) as Barcode[];
+    },
+  };
     
-    return plugin.call(frame, { types, ...options }) as unknown as Barcode[];
 }
