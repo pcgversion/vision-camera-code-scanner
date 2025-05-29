@@ -20,12 +20,15 @@ export default function App() {
   const device = useCameraDevice('back', {
     physicalDevices: ['wide-angle-camera'],
   });
-  const frameProcessor: ReadonlyFrameProcessor =  useFrameProcessor((frame: Frame) => {
-    'worklet';
-    const data = scanBarcodes([BarcodeFormat.ALL_FORMATS], {
+  const barcodePlugin = scanBarcodes([BarcodeFormat.ALL_FORMATS], {
       checkInverted: true,
     });
-    Worklets.createRunOnJS(() => { setBarcodes(data) });
+  const frameProcessor: ReadonlyFrameProcessor =  useFrameProcessor((frame: Frame) => {
+    'worklet';
+    
+    let _barcodes = barcodePlugin.scanBarcodes(frame, [BarcodeFormat.ALL_FORMATS], {
+      checkInverted: true,
+    }); 
   }, []);
 
   React.useEffect(() => {
