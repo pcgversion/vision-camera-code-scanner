@@ -11,12 +11,12 @@ import type {
    
   Barcode,
 } from 'vision-camera-code-scanner';
-import {Worklets} from 'react-native-worklets-core';
+//import {Worklets} from 'react-native-worklets-core';
 import { scanBarcodes, BarcodeFormat } from 'vision-camera-code-scanner';
 
 export default function App() {
   const [hasPermission, setHasPermission] = React.useState(false);
-  const [barcodes, setBarcodes] = React.useState<Barcode[]>([]);
+  //const [barcodes, setBarcodes] = React.useState<Barcode[]>([]);
   const device = useCameraDevice('back', {
     physicalDevices: ['wide-angle-camera'],
   });
@@ -25,10 +25,10 @@ export default function App() {
     });
   const frameProcessor: ReadonlyFrameProcessor =  useFrameProcessor((frame: Frame) => {
     'worklet';
-    
-    let _barcodes = barcodePlugin.scanBarcodes(frame, [BarcodeFormat.ALL_FORMATS], {
-      checkInverted: true,
-    }); 
+    let barcodes = [];
+    barcodes = barcodePlugin.scanBarcodes(frame, [BarcodeFormat.ALL_FORMATS], {
+       checkInverted: true,
+     }); 
   }, []);
 
   React.useEffect(() => {
