@@ -7,10 +7,6 @@ import {
 } from 'react-native-vision-camera';
 import { Camera } from 'react-native-vision-camera';
 import type { Frame,ReadonlyFrameProcessor } from 'react-native-vision-camera';
-import type {
-   
-  Barcode,
-} from 'vision-camera-code-scanner';
 //import {Worklets} from 'react-native-worklets-core';
 import { scanBarcodes, BarcodeFormat } from 'vision-camera-code-scanner';
 
@@ -50,11 +46,11 @@ export default function App() {
           frameProcessor={frameProcessor}
           zoom={device?.neutralZoom ?? 1}
         />
-        {barcodes.map((barcode, idx) => (
+        {/* {barcodes.map((barcode, idx) => (
           <Text key={idx} style={styles.barcodeTextURL}>
             {barcode.displayValue}
           </Text>
-        ))}
+        ))} */}
       </>
     )
   );
