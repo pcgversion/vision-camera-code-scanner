@@ -21,7 +21,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
     
     public override init(proxy: VisionCameraProxyHolder, options: [AnyHashable: Any]! = [:]) {
         super.init(proxy: proxy, options: options)
-        print("VisionCameraCodeScanner initialized with options: \(String(describing: options))")
+        //print("VisionCameraCodeScanner initialized with options: \(String(describing: options))")
     }
     
     public override func callback(_ frame: Frame, withArguments args: [AnyHashable : Any]?) -> Any {
@@ -34,22 +34,22 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
         }
 
         var ciImage = CIImage(cvPixelBuffer: imageBuffer)
-        var curDeviceOrientation = UIDevice.current.orientation
+        let curDeviceOrientation = UIDevice.current.orientation
         let isLandscape = isDeviceInLandscapeWhenFaceUp()
         //print("current Device Orientation: \(curDeviceOrientation) \(isLandscape)")
         switch curDeviceOrientation {
             case UIDeviceOrientation.portraitUpsideDown:  // Device oriented vertically, Home button on the top
-                ciImage = ciImage.oriented(forExifOrientation: 3)
+                ciImage = ciImage.oriented(forExifOrientation: 8)
             case UIDeviceOrientation.landscapeLeft:       // Device oriented horizontally, Home button on the right
-                ciImage = ciImage.oriented(forExifOrientation: 3)
+                ciImage = ciImage.oriented(forExifOrientation: 1)
             case UIDeviceOrientation.landscapeRight:      // Device oriented horizontally, Home button on the left
                 ciImage = ciImage.oriented(forExifOrientation: 3)
             case UIDeviceOrientation.portrait:            // Device oriented vertically, Home button on the bottom
-                ciImage = ciImage.oriented(forExifOrientation: 1)
+                ciImage = ciImage.oriented(forExifOrientation: 6)
             case UIDeviceOrientation.faceUp:
-            ciImage = ciImage.oriented(forExifOrientation: isLandscape ? 3 : 1)
+            ciImage = ciImage.oriented(forExifOrientation: isLandscape ? isDeviceInLandscapeWhenFaceUpLeft() ? 3 : 1 : 6)
             case UIDeviceOrientation.faceDown:
-                ciImage = ciImage.oriented(forExifOrientation: isLandscape ? 3 : 1)
+                ciImage = ciImage.oriented(forExifOrientation: isLandscape ? 1 : 6)
             case UIDeviceOrientation.unknown:
                 ciImage = ciImage.oriented(forExifOrientation: 1)
             default:
@@ -283,4 +283,21 @@ func isDeviceInLandscapeWhenFaceUp() -> Bool {
     }
     // Otherwise, check if the current device orientation is landscape
     return orientation == .landscapeLeft || orientation == .landscapeRight
+}
+
+func isDeviceInLandscapeWhenFaceUpLeft() -> Bool {
+    let orientation = UIDevice.current.orientation
+    
+    // If the device is face up, check the interface orientation
+    if orientation == .faceUp {
+        // Get the current interface orientation
+        let interfaceOrientation = UIApplication.shared.windows.first?.windowScene?.interfaceOrientation
+        
+        if let interfaceOrientation = interfaceOrientation {
+            return interfaceOrientation == .landscapeLeft
+        }
+    }
+    
+    // Otherwise, check if the current device orientation is landscape
+    return orientation == .landscapeLeft
 }
