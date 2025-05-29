@@ -22,7 +22,7 @@ export default function App() {
   });
   const frameProcessor: ReadonlyFrameProcessor =  useFrameProcessor((frame: Frame) => {
     'worklet';
-    const data = scanBarcodes(frame, [BarcodeFormat.ALL_FORMATS], {
+    const data = scanBarcodes([BarcodeFormat.ALL_FORMATS], {
       checkInverted: true,
     });
     Worklets.createRunOnJS(() => { setBarcodes(data) });
