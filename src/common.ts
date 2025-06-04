@@ -301,7 +301,7 @@ export type BarcodeScannerPlugin = {
  * @param types Array of barcode types to detect (for optimal performance, use less types)
  * @returns Detected barcodes from MLKit
  */
-const plugin = VisionCameraProxy.initFrameProcessorPlugin<Barcode[]>('scanBarcodes', {});
+const plugin = VisionCameraProxy.initFrameProcessorPlugin('scanBarcodes', {});
 
 export function scanBarcodes(
   frame: Frame,
