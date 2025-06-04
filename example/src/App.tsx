@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { StyleSheet } from 'react-native';
+import { StyleSheet, Text } from 'react-native';
 import {
   useCameraDevice,
   useFrameProcessor,
@@ -48,13 +48,18 @@ export default function App() {
           frameProcessor={frameProcessor}
           zoom={device?.neutralZoom ?? 1}
         />
-        {/* {barcodes.map((barcode, idx) => (
-          <Text key={idx} style={styles.barcodeTextURL}>
-            {barcode.displayValue}
-          </Text>
-        ))} */}
+       {barcodes.map((barcode, idx) => (
+          <Text key={idx} style={styles.barcodeTextURL}>{barcode.displayValue ?? barcode.rawValue}</Text>
+        ))}
       </>
     )
   );
 }
 
+const styles = StyleSheet.create({
+  barcodeTextURL: {
+    fontSize: 20,
+    color: 'white',
+    fontWeight: 'bold',
+  },
+});
