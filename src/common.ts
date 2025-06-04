@@ -301,7 +301,7 @@ export type BarcodeScannerPlugin = {
  * @param types Array of barcode types to detect (for optimal performance, use less types)
  * @returns Detected barcodes from MLKit
  */
-const plugin = VisionCameraProxy.initFrameProcessorPlugin('scanBarcodes', {});
+const plugin = VisionCameraProxy.initFrameProcessorPlugin<Barcode[]>('scanBarcodes', {});
 
 export function scanBarcodes(
   frame: Frame,
@@ -314,8 +314,13 @@ export function scanBarcodes(
   //return __scanCodes(frame, types, options);
   if (plugin == null)
      throw new Error('Failed to load Frame Processor Plugin "scanBarcodes"!');
+  
+  const optionsArg: Record<string, any> | undefined =
+  codeScannerOptions === undefined ? undefined : (codeScannerOptions as Record<string, any>);
+
+  const pluginArgs = { types: types, options: optionsArg };
   // @ts-ignore
-  let pluginArgs = { types: types, options: codeScannerOptions};
+  // eslint-disable-next-line no-undef
   return plugin.call(frame, pluginArgs) as unknown as Barcode[];
 }
 

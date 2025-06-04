@@ -1,6 +1,6 @@
 import * as React from 'react';
 
-import { StyleSheet, Text } from 'react-native';
+import { StyleSheet } from 'react-native';
 import {
   useCameraDevice,
   useFrameProcessor,
@@ -18,11 +18,10 @@ export default function App() {
   });
   const barcodePlugin = hookScanBarcodes([BarcodeFormat.ALL_FORMATS], {
       checkInverted: true,
-    });
+  });
   const frameProcessor: ReadonlyFrameProcessor =  useFrameProcessor((frame: Frame) => {
     'worklet';
-    let barcodes = [];
-    barcodes = barcodePlugin.scanBarcodes(frame, [BarcodeFormat.ALL_FORMATS], {
+    const barcodes =  barcodePlugin.scanBarcodes(frame, [BarcodeFormat.ALL_FORMATS], {
        checkInverted: true,
      }); 
   }, []);
@@ -56,10 +55,3 @@ export default function App() {
   );
 }
 
-const styles = StyleSheet.create({
-  barcodeTextURL: {
-    fontSize: 20,
-    color: 'white',
-    fontWeight: 'bold',
-  },
-});
