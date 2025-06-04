@@ -315,32 +315,37 @@ export function scanBarcodes(
   if (plugin == null)
      throw new Error('Failed to load Frame Processor Plugin "scanBarcodes"!');
   
-  const optionsArg: Record<string, any> | undefined =
   codeScannerOptions === undefined ? undefined : (codeScannerOptions as Record<string, any>);
-
-  const pluginArgs = { types: types, options: optionsArg };
+  types == undefined ? undefined : (types as Record<string, any>);
+  const pluginArgs: Record<string, any> | undefined = { types: types, options: { ...codeScannerOptions } };
   // @ts-ignore
   // eslint-disable-next-line no-undef
-  return plugin.call(frame, pluginArgs) as unknown as Barcode[];
+  return plugin.call(frame, pluginArgs ) as unknown as Barcode[];
 }
 
 export function hookScanBarcodes(
   types: BarcodeFormat[],
-  options?: CodeScannerOptions
+  codeScannerOptions?: CodeScannerOptions
 ): BarcodeScannerPlugin {
   // @ts-ignore
   // eslint-disable-next-line no-undef
   //return __scanCodes(frame, types, options);
-  const newPlugin = VisionCameraProxy.initFrameProcessorPlugin('scanBarcodes', { types, options });
+  const newPlugin = VisionCameraProxy.initFrameProcessorPlugin('scanBarcodes', {});
+  codeScannerOptions === undefined ? undefined : (codeScannerOptions as Record<string, any>);
+  types == undefined ? undefined : (types as Record<string, any>);
 
   if (newPlugin == null)
     throw new Error('Failed to load Frame Processor Plugin "scanBarcodes"!');
  
   return {
-    scanBarcodes: (frame: Frame,  types: BarcodeFormat[], options?:CodeScannerOptions ): Barcode[] => {
+    scanBarcodes: (frame: Frame, types: BarcodeFormat[], codeScannerOptions?: CodeScannerOptions ): Barcode[] => {
       'worklet';
       // @ts-ignore
-      return newPlugin.call(frame, { types: types, options:options}) as unknown as Barcode[];
+
+      const pluginArgs: Record<string, any> | undefined = { types:types, options: { ...codeScannerOptions } };
+      // @ts-ignore
+      // eslint-disable-next-line no-undef
+      return newPlugin.call(frame, pluginArgs) as unknown as Barcode[];
     },
   };
     
