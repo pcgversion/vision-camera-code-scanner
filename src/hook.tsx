@@ -9,7 +9,7 @@ import type {
   CodeScannerOptions,
   
 } from './common';
-import { scanBarcodes } from './common';
+import { hookScanBarcodes } from './common';
 
 export function useScanBarcodes(
   types: BarcodeFormat[],
@@ -18,7 +18,7 @@ export function useScanBarcodes(
   const [barcodes, setBarcodes] = useState<Barcode[]>([]);
   const [frameWidth, setFrameWidth] = useState<number>(1);
   const [frameHeight, setFrameHeight] = useState<number>(1);
-  const barcodePlugin = useMemo(() => scanBarcodes(types, options), [types, options]);
+  const barcodePlugin = useMemo(() => hookScanBarcodes(types, options), [types, options]);
 
   const frameProcessor = useFrameProcessor((frame: Frame) => {
     'worklet';

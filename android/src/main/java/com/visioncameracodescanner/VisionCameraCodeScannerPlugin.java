@@ -18,11 +18,11 @@ import com.facebook.react.bridge.ReadableNativeMap;
 import com.facebook.react.bridge.WritableNativeArray;
 import com.facebook.react.bridge.WritableNativeMap;
 
-import androidx.annotation.NonNull;
+import org.jetbrains.annotations.NotNull; // Add this import
 import androidx.camera.core.ImageProxy;
 
 import com.google.android.gms.tasks.Tasks;
-import com.mrousavy.camera.frameprocessor.FrameProcessorPlugin;
+
 import com.google.android.gms.tasks.Task;
 import com.google.mlkit.vision.barcode.common.Barcode;
 import com.google.mlkit.vision.barcode.BarcodeScanner;
@@ -35,9 +35,18 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import android.util.Log;
 
+import com.mrousavy.camera.frameprocessors.Frame;
+import com.mrousavy.camera.frameprocessors.FrameProcessorPlugin;
+import com.mrousavy.camera.frameprocessors.VisionCameraProxy;
+import com.mrousavy.camera.core.FrameInvalidError;
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
+  VisionCameraCodeScannerPlugin(@NonNull VisionCameraProxy proxy, @Nullable Map<String, Object> options) {}
   private BarcodeScanner barcodeScanner = null;
   private int barcodeScannerFormatsBitmap = -1;
 
@@ -59,18 +68,32 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
     Barcode.FORMAT_AZTEC
   ));
 
+  @Nullable
   @Override
-  public Object callback(ImageProxy frame, Object[] params) {
-    createBarcodeInstance(params);
+  public Object callback(@NotNull Frame frame, @Nullable Map<String, Object> params) {
+    Log.d("VisionCameraCodeScannerPlugin","callback");
+    ImageProxy imageProxy;
+    try {
+      imageProxy = frame.getImageProxy();
+    } catch (FrameInvalidError e) {
+      e.printStackTrace();
+      return null;
+    }
+    Log.d("VisionCameraCodeScannerPlugin 2", String.valueOf(params.get("types")));
+    Object typesObj = params != null ? params.get("types") : null;
+    Object optionsObj = params != null ? params.get("options") : null;
+    Log.d("VisionCameraCodeScannerPlugin", "types:" + typesObj.toString());
+    Log.d("VisionCameraCodeScannerPlugin", "optionsObj:" + optionsObj.toString());
+    createBarcodeInstance(typesObj);
 
     @SuppressLint("UnsafeOptInUsageError")
-    Image mediaImage = frame.getImage();
+    Image mediaImage = imageProxy.getImage();
     if (mediaImage != null) {
       ArrayList<Task<List<Barcode>>> tasks = new ArrayList<Task<List<Barcode>>>();
-      InputImage image = InputImage.fromMediaImage(mediaImage, frame.getImageInfo().getRotationDegrees());
+      InputImage image = InputImage.fromMediaImage(mediaImage, imageProxy.getImageInfo().getRotationDegrees());
 
-      if (params[1] instanceof ReadableNativeMap) {
-        ReadableNativeMap scannerOptions = (ReadableNativeMap) params[1];
+      if (optionsObj instanceof ReadableNativeMap) {
+        ReadableNativeMap scannerOptions = (ReadableNativeMap) optionsObj;
         boolean checkInverted = scannerOptions.getBoolean("checkInverted");
 
         if (checkInverted) {
@@ -109,9 +132,9 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
     return null;
   }
 
-  private void createBarcodeInstance(Object[] params) {
-    if (params[0] instanceof ReadableNativeArray) {
-      ReadableNativeArray rawFormats = (ReadableNativeArray) params[0];
+  private void createBarcodeInstance(Object formatTypes) {
+    if (formatTypes instanceof ReadableNativeArray) {
+      ReadableNativeArray rawFormats = (ReadableNativeArray) formatTypes;
 
       int formatsBitmap = 0;
       int formatsIndex = 0;
@@ -249,7 +272,5 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 		return bitmap;
 	}
 
-  VisionCameraCodeScannerPlugin() {
-    super("scanCodes");
-  }
+  
 }
