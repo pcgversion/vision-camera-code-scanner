@@ -51,6 +51,10 @@ import com.mrousavy.camera.core.FrameInvalidError;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
+import com.google.zxing.*;
+import com.google.zxing.common.HybridBinarizer;
+import com.google.zxing.datamatrix.DataMatrixReader;
+import com.google.zxing.oned.rss.RSS14Reader;
 public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
   
   
