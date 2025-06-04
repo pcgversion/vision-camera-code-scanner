@@ -306,7 +306,7 @@ const plugin = VisionCameraProxy.initFrameProcessorPlugin('scanBarcodes', {});
 export function scanBarcodes(
   frame: Frame,
   types: BarcodeFormat[],
-  options?: CodeScannerOptions
+  codeScannerOptions?: CodeScannerOptions
 ): Barcode[] {
   'worklet';
   // @ts-ignore
@@ -314,9 +314,11 @@ export function scanBarcodes(
   //return __scanCodes(frame, types, options);
   if (plugin == null)
      throw new Error('Failed to load Frame Processor Plugin "scanBarcodes"!');
-      // @ts-ignore
-  return plugin.call(frame, { types, options}) as unknown as Barcode[];
+  // @ts-ignore
+  let pluginArgs = { types: types, options: codeScannerOptions};
+  return plugin.call(frame, pluginArgs) as unknown as Barcode[];
 }
+
 export function hookScanBarcodes(
   types: BarcodeFormat[],
   options?: CodeScannerOptions
@@ -327,7 +329,7 @@ export function hookScanBarcodes(
   const newPlugin = VisionCameraProxy.initFrameProcessorPlugin('scanBarcodes', { types, options });
 
   if (newPlugin == null)
-    throw new Error('Failed to load Frame Processor Plugin "scanCodes"!');
+    throw new Error('Failed to load Frame Processor Plugin "scanBarcodes"!');
  
   return {
     scanBarcodes: (frame: Frame,  types: BarcodeFormat[], options?:CodeScannerOptions ): Barcode[] => {
