@@ -42,6 +42,8 @@ import java.util.Map;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Set;
+
+import android.content.Context;
 import android.util.Log;
 
 import com.mrousavy.camera.frameprocessors.Frame;
@@ -55,9 +57,15 @@ import com.google.zxing.*;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.datamatrix.DataMatrixReader;
 import com.google.zxing.oned.rss.RSS14Reader;
+
+import android.view.Display;
+import android.view.Surface;
+import android.view.WindowManager;
+
+
 public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
   
-  
+  private Context context;
   private BarcodeScanner barcodeScanner = null;
   private int barcodeScannerFormatsBitmap = -1;
 
@@ -93,8 +101,8 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
     Object typesObj = params != null ? params.get("types") : null;
     Object optionsObj = params != null ? params.get("options") : null;
-    
-    
+    int deviceRotation = getDeviceSurfaceRotation(this.context);
+    //Log.d("CodeScanner:",  String.valueOf(deviceRotation));
     if (typesObj instanceof List) {
         List<?> typesList = (List<?>) typesObj;
         for (Object item : typesList) {
@@ -109,12 +117,18 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
         }
     }
     createBarcodeInstance(typesArray);
-
+    var newRotation = 0;
     @SuppressLint("UnsafeOptInUsageError")
     Image mediaImage = imageProxy.getImage();
     if (mediaImage != null) {
       ArrayList<Task<List<Barcode>>> tasks = new ArrayList<Task<List<Barcode>>>();
-      InputImage image = InputImage.fromMediaImage(mediaImage, imageProxy.getImageInfo().getRotationDegrees());
+      if(deviceRotation == 0)
+        newRotation = 90;
+      if(deviceRotation == 1)
+        newRotation = 0;
+      if(deviceRotation == 3)
+        newRotation = 180;
+      InputImage image = InputImage.fromMediaImage(mediaImage, newRotation);
       if (optionsObj instanceof ReadableNativeMap) {
         ReadableNativeMap scannerOptions = (ReadableNativeMap) optionsObj;
         boolean checkInverted = scannerOptions.getBoolean("checkInverted");
@@ -294,8 +308,25 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 		return bitmap;
 	}
 
+  public static int getDeviceSurfaceRotation(Context context) {
+        if (context == null) {
+            System.err.println("Error: Context cannot be null to get device surface rotation.");
+            return -1; // Or throw an IllegalArgumentException
+        }
+        WindowManager windowManager = (WindowManager) context.getSystemService(Context.WINDOW_SERVICE);
+        if (windowManager != null) {
+            Display display = windowManager.getDefaultDisplay();
+            if (display != null) {
+                return display.getRotation();
+            }
+        }
+        System.err.println("Error: Could not retrieve WindowManager or Display service.");
+        return -1; // Indicate an error
+  }
+ 
   VisionCameraCodeScannerPlugin(@NonNull VisionCameraProxy proxy, @Nullable Map<String, Object> options) {
     super();
+    this.context = proxy.getContext();
     Log.d("VisionCameraCodeScannerPlugin", "VisionCameraCodeScannerPlugin init with options: " + options);
   }
 }
