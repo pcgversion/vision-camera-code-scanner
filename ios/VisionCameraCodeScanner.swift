@@ -76,16 +76,15 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
        
         var barCodeAttributes: [Any] = []
         var barcodeType : [Any] = []
-        if let barcodeTypes = args?["0"] as? Int{
-            barcodeType = [[barcodeTypes]]
-        }
+        barcodeType = [args?["types"]]
+       
         do {
             try Self.createScanner(barcodeType)
             //print("Barcode Scanner: \(String(describing: Self.barcodeScanner))")
             var barcodes: [Barcode] = []
             barcodes.append(contentsOf: try Self.barcodeScanner!.results(in: visionImage))
             
-            if let options = args?[1] as? [String: Any] {
+            if let options = args?["options"] as? [String: Any] {
                 let checkInverted = options["checkInverted"] as? Bool ?? false
                 if (checkInverted) {
                     guard let buffer = CMSampleBufferGetImageBuffer(frame.buffer) else {
