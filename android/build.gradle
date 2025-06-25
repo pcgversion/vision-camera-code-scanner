@@ -47,10 +47,10 @@ repositories {
     maven {
         // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
         url("$rootDir/../node_modules/react-native/android")
-        url("https://s01.oss.sonatype.org/content/repositories/snapshots")
     }
     google()
     jcenter()
+    maven { url("https://s01.oss.sonatype.org/content/repositories/snapshots") }
 }
 
 dependencies {
@@ -62,4 +62,5 @@ dependencies {
     implementation 'com.google.mlkit:barcode-scanning:17.0.2'
     implementation 'com.google.zxing:core:3.5.2'
     implementation "io.github.zxing-cpp:android:2.3.0"
+    implementation project(':openCV')
 }
