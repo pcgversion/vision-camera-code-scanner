@@ -62,5 +62,4 @@ dependencies {
     implementation 'com.google.mlkit:barcode-scanning:17.0.2'
     implementation 'com.google.zxing:core:3.5.3'
     implementation "io.github.zxing-cpp:android:2.3.0"
-    implementation "io.github.zxing-cpp:android:2.4.0-SNAPSHOT"
 }
