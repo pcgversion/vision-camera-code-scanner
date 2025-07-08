@@ -40,6 +40,11 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    repositories {
+        flatDir {
+            dirs 'libs'
+        }
+    }
 }
 
 repositories {
@@ -50,6 +55,7 @@ repositories {
     }
     google()
     jcenter()
+    maven { url("https://s01.oss.sonatype.org/content/repositories/snapshots") }
 }
 
 dependencies {
@@ -60,4 +66,13 @@ dependencies {
     implementation "androidx.camera:camera-core:1.2.3"
     implementation 'com.google.mlkit:barcode-scanning:17.0.2'
     implementation 'com.google.zxing:core:3.5.2'
+    implementation "io.github.zxing-cpp:android:2.3.0"
+    implementation 'org.tensorflow:tensorflow-lite:2.15.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-task-vision:0.4.4'
+    // Import the GPU delegate plugin Library for GPU inference
+    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.9.0'
+    //implementation(name: 'zxingcpp-release', ext: 'aar')
+    implementation project(':openCV')
 }
