@@ -2,6 +2,8 @@ package com.visioncameracodescanner;
 
 import static com.visioncameracodescanner.BarcodeConverter.convertToArray;
 import static com.visioncameracodescanner.BarcodeConverter.convertToMap;
+
+import com.google.mlkit.common.MlKitException;
 import com.visioncameracodescanner.BarcodeDetectorHelper;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
@@ -52,6 +54,8 @@ import java.util.Set;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
+
 import android.graphics.Matrix;
 import android.content.Context;
 import android.os.Build;
@@ -68,7 +72,6 @@ import com.google.zxing.*;
 import com.google.zxing.common.HybridBinarizer;
 import com.google.zxing.datamatrix.DataMatrixReader;
 import com.google.zxing.oned.rss.RSS14Reader;
-import com.google.zxing.BinaryBitmap;
 import com.google.zxing.common.GlobalHistogramBinarizer;
 import com.visioncameracodescanner.YuvToRgbConverter;
 
@@ -90,14 +93,9 @@ import org.opencv.imgproc.Imgproc;
 import org.opencv.android.OpenCVLoader;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.core.RotatedRect;
+
+
 import zxingcpp.BarcodeReader;
-//import zxingcpp.Result;
-
-import java.util.List;
-
-// Java utility classes for sorting and collections
-import java.util.Comparator;
-
 
 public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
   
@@ -114,6 +112,8 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
   private BarcodeReader zxingBarcodeReader = null;
   private MultiFormatReader reader = new MultiFormatReader();
   private BarcodeDetectorHelper barcodeDetectorHelper = null;
+  private Matrix matrix = new Matrix();
+
   // Add this flag
   private boolean isProcessingFallback = false;
   private static final Set<Integer> barcodeFormats = new HashSet<>(Arrays.asList(
@@ -135,18 +135,27 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
   ));
 
   
+
+  VisionCameraCodeScannerPlugin(@NonNull VisionCameraProxy proxy, @Nullable Map<String, Object> options) {
+    super();
+    this.context = proxy.getContext();
+    Log.d("VisionCameraCodeScannerPlugin", "VisionCameraCodeScannerPlugin init with options: " + options);
+
+    //init zxing-cpp barcode reader
+    BarcodeReader.Options zxingOptions = new BarcodeReader.Options();
+    zxingOptions.setTryRotate(true);
+    zxingOptions.setTryHarder(true);
+    zxingOptions.setTryInvert(true);
+    zxingOptions.setTryDownscale(true);
+
+    
+    zxingBarcodeReader = new BarcodeReader(zxingOptions);
+    
+  }
+
   @Override
   public Object callback(@NotNull Frame frame, @Nullable Map<String, Object> params) {
     
-    //init zxing-cpp barcode reader
-    BarcodeReader.Options options = new BarcodeReader.Options();
-    options.setTryRotate(true);
-    options.setTryHarder(true);
-    options.setTryInvert(true);
-    options.setTryDownscale(true);
-
-    
-    zxingBarcodeReader = new BarcodeReader(options);
     
     ImageProxy imageProxy;
 
@@ -200,14 +209,20 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
         newRotation = 0;
       if(deviceRotation == 3)
         newRotation = 180;
-      
+
+
       InputImage image = InputImage.fromMediaImage(mediaImage, newRotation);
-      
+      Bitmap bitmap = null;
+
+      Bitmap tempBitmap = convertImageProxyToBitmap(imageProxy);
+      bitmap = rotateBitmap(tempBitmap, newRotation);
+
       boolean detectMarkerOnly = true;
 
       if(scannerOptions != null && scannerOptions.containsKey("detectMarkerOnly"))
         detectMarkerOnly = scannerOptions.get("detectMarkerOnly") != null ? (boolean) scannerOptions.get("detectMarkerOnly") : true;
-      
+
+
       if (scannerOptions != null && scannerOptions.containsKey("checkInverted")) {
         Object checkInvertedObj = scannerOptions.get("checkInverted");
         boolean checkInverted = false;
@@ -215,9 +230,9 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
             checkInverted = (Boolean) checkInvertedObj;
         }
         if (checkInverted) {
-          Bitmap bitmap = null;
+          //Bitmap bitmap = null;
           try {
-            bitmap = ImageConvertUtils.getInstance().getUpRightBitmap(image);
+            //bitmap = ImageConvertUtils.getInstance().getUpRightBitmap(image);
             Bitmap invertedBitmap = this.invert(bitmap);
             InputImage invertedImage = InputImage.fromBitmap(invertedBitmap, 0);
             tasks.add(barcodeScanner.process(invertedImage));
@@ -237,7 +252,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
         }
 
         List<Map<String, Object>> resultArray = new ArrayList<>();
-        
+
         for (Barcode barcode : barcodes) {
           if (barcode.getRawValue() != null && !barcode.getRawValue().trim().isEmpty()) {
             resultArray.add(convertBarcode(barcode));
@@ -245,25 +260,26 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
         }
         //we have to run AI Model against the frame
         //detect there is any plu code is present or not
-        if ( scannerOptions != null ) 
+        if ( scannerOptions != null )
         {
-          Bitmap bitmap = null;
+          //Bitmap bitmap = null;
           try {
        
-            bitmap = ImageConvertUtils.getInstance().getUpRightBitmap(image);
+            //bitmap = ImageConvertUtils.getInstance().getUpRightBitmap(image);
             var detectorMode = scannerOptions.get("detectorMode") != null ?  scannerOptions.get("detectorMode") : 1;
             var shouldEnableClassification = scannerOptions.get("shouldEnableClassification") != null ?  scannerOptions.get("shouldEnableClassification") : false;
             var shouldEnableMultipleObjects = scannerOptions.get("shouldEnableMultipleObjects") != null ? scannerOptions.get("shouldEnableMultipleObjects") : true;  
-            var modelName = scannerOptions.get("modelName") != null ?  scannerOptions.get("modelName") : "final_model";
+            var modelName = scannerOptions.get("modelName") != null ?  scannerOptions.get("modelName") : "yolo11-obb-od";
             var modelImageSize = scannerOptions.get("modelImageSize") != null ?  scannerOptions.get("modelImageSize") : 1024;
-            var thresold = scannerOptions.get("thresold") != null ?  ((Number) scannerOptions.get("thresold")).floatValue()  : 0.5f;
+            var threshold = scannerOptions.get("threshold") != null ?  ((Number) scannerOptions.get("threshold")).floatValue()  : 0.5f;
+            if(barcodeDetectorHelper == null)
             barcodeDetectorHelper = new BarcodeDetectorHelper(
                 modelName.toString(),
                 detectorMode instanceof Integer ? (Integer) detectorMode : 1,
                 shouldEnableClassification instanceof Boolean ? (Boolean) shouldEnableClassification : false,
                 shouldEnableMultipleObjects instanceof Boolean ? (Boolean) shouldEnableMultipleObjects : true,
                 modelImageSize instanceof Integer ? (Integer) modelImageSize : 1024,
-                thresold,
+                threshold,
                 (ReactApplicationContext) context
             );
             // Log.d(
@@ -277,26 +293,25 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
             //     thresold
             // );
          
-            // code to just save the original frame as bitmap iamge for debug purpose
-            // File file = null;
-            // try {
-            //   file = new File(context.getFilesDir(), "debug_bitmap.jpg");
-            //   FileOutputStream out = new FileOutputStream(file);
-            //   bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
-            //   out.close();
-            //   Log.d("ZXingScan", "Bitmap saved at.: " + file.getAbsolutePath());
-
-            // } catch (IOException e) {
-            //   e.printStackTrace();
-            // }
+             //code to just save the original frame as bitmap iamge for debug purpose
+//             File file = null;
+//             try {
+//               file = new File(context.getFilesDir(), "debug_bitmap.jpg");
+//               FileOutputStream out = new FileOutputStream(file);
+//               bitmap.compress(Bitmap.CompressFormat.JPEG, 100, out);
+//               out.close();
+//               Log.d("ZXingScan", "Bitmap saved at.: " + file.getAbsolutePath());
+//
+//             } catch (IOException e) {
+//               e.printStackTrace();
+//             }
             
             
             //Lets perform if we got any plu codes
             try {
-                
                 List<Map<String, Object>> pluCodeMarkers = barcodeDetectorHelper.detectFrameProcessor(bitmap);
                 int outputObjectIndex = 1;
-               
+
                 if (pluCodeMarkers.size() > 0 && !isProcessingFallback) {
                   isProcessingFallback = true; // Set flag
                   for (Map<String, Object> detection : pluCodeMarkers) 
@@ -359,45 +374,69 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                     
                     
                     
-                    // int cropX = (int) minX;
-                    // int cropY = (int) minY;
-                    // int cropWidth = (int) (maxX - minX);
-                    // int cropHeight = (int) (maxY - minY);
-
-                    // // Ensure valid crop size
-                    // if (cropWidth > 0 && cropHeight > 0 &&
-                    //     cropX >= 0 && cropY >= 0 &&
-                    //     cropX + cropWidth <= bitmap.getWidth() &&
-                    //     cropY + cropHeight <= bitmap.getHeight()) {
-                    //   Bitmap croppedBitmap = Bitmap.createBitmap(bitmap, cropX, cropY, cropWidth, cropHeight);
-
-                    //   //Save cropped bitmap for debugging
-                    //   try {
-                    //     File croppedFile = new File(context.getFilesDir(), "cropped_barcode.jpg");
-                    //     FileOutputStream croppedOut = new FileOutputStream(croppedFile);
-                    //     croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, croppedOut);
-                    //     croppedOut.close();
-                    //     Log.d("ZXingScan", "Cropped barcode saved at: " + croppedFile.getAbsolutePath());
-                    //   } catch (IOException e) {
-                    //     e.printStackTrace();
-                    //   }
-                    // }
-                      // Use croppedBitmap as needed
                       Set<String> tempResultsTexts = new HashSet<>();
                       if (!detectMarkerOnly) 
                       {
+                        int cropX = (int) minX;
+                        int cropY = (int) minY;
+                        int cropWidth = (int) (maxX - minX);
+                        int cropHeight = (int) (maxY - minY);
+
+                        // // Ensure valid crop size
+                        // if (cropWidth > 0 && cropHeight > 0 &&
+                        //     cropX >= 0 && cropY >= 0 &&
+                        //     cropX + cropWidth <= bitmap.getWidth() &&
+                        //     cropY + cropHeight <= bitmap.getHeight()) {
+                        // Convert Bitmap to OpenCV Mat
+                        Mat sourceMat = new Mat();
+                        Utils.bitmapToMat(bitmap, sourceMat);
+
+                        if (cropWidth <= 0 || cropHeight <= 0 || // If width or height is not positive
+                                cropX < 0 || cropY < 0 ||             // If x or y is negative
+                                (cropX + cropWidth) > sourceMat.cols() ||  // If cropped area exceeds mat width
+                                (cropY + cropHeight) > sourceMat.rows()) { // If cropped area exceeds mat height
+
+                          // Log the reason for skipping, if desired
+                          continue; // Skip to the next iteration of the loop
+                        }
+                        // Define ROI and crop
+                        org.opencv.core.Rect roi = new org.opencv.core.Rect(cropX, cropY, cropWidth, cropHeight);
+                        Mat croppedMat = new Mat(sourceMat, roi).clone(); // clone to make it a separate copy
+
+                        // Convert back to Bitmap
+                        Bitmap croppedBitmap = Bitmap.createBitmap(croppedMat.cols(), croppedMat.rows(), Bitmap.Config.ARGB_8888);
+                        Utils.matToBitmap(croppedMat, croppedBitmap);
+
+                        // Release Mats
+                        sourceMat.release();
+                        croppedMat.release();
+
+
+                        //   //Save cropped bitmap for debugging
+                        //   try {
+                        //     File croppedFile = new File(context.getFilesDir(), "cropped_barcode.jpg");
+                        //     FileOutputStream croppedOut = new FileOutputStream(croppedFile);
+                        //     croppedBitmap.compress(Bitmap.CompressFormat.JPEG, 100, croppedOut);
+                        //     croppedOut.close();
+                        //     Log.d("ZXingScan", "Cropped barcode saved at: " + croppedFile.getAbsolutePath());
+                        //   } catch (IOException e) {
+                        //     e.printStackTrace();
+                        //   }
+                        // }
+                        // Use croppedBitmap as needed
+
                         for (var k = 0; k < 2; k++) {
 
                           //if (Math.abs(angle) > 15.0f) {
                           // ZXing fallback with rotation if needed
-                          Bitmap bitmapForZXing = bitmap;
+                          //Bitmap bitmapForZXing = croppedBitmap;
+                          //matrix.reset();
                           // Rotate counter-clockwise by the angle
-                          Matrix matrix = new Matrix();
-
-                          matrix.postRotate(k == 0 ? -angle : (70 - angle)); // negative for counter-clockwise
+                         
+                          //matrix.postRotate(k == 0 ? -angle : (70 - angle)); // negative for counter-clockwise
                           // Create the rotated bitmap (may have transparent background)
-                          bitmapForZXing = Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(),
-                              bitmap.getHeight(), matrix, true);
+                          //Bitmap bitmapForZXing = Bitmap.createBitmap(croppedBitmap, 0, 0, croppedBitmap.getWidth(),croppedBitmap.getHeight(), matrix, true);
+                          Bitmap bitmapForZXing = rotateBitmapOpenCV(croppedBitmap, k == 0 ? -angle : (70 - angle));
 
                           // File zfile = null;
                           // try {
@@ -434,7 +473,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                               float zy2 = ((Number) position.getTopRight().y).floatValue();
                               float zx3 = ((Number) position.getBottomRight().x).floatValue();
                               float zy3 = ((Number) position.getBottomRight().y).floatValue();
-                              float zx4 = ((Number) position.getBottomLeft().y).floatValue();
+                              float zx4 = ((Number) position.getBottomLeft().x).floatValue();
                               float zy4 = ((Number) position.getBottomRight().y).floatValue();
 
                               // Compute min/max for the original points
@@ -520,9 +559,9 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                           resultMap.put("boundingBox", boundingBox);
                           resultMap.put("cornerPoints", cornerPoints);
                           resultMap.put("content", barcodeData);
-                          Log.d("ZXingScan", "Adding ZXing Fake result: " + resultText + ", displayValue:" + resultText
-                              + " format:" + format);
-                          resultArray.add(resultMap);
+                          // Log.d("ZXingScan", "Adding ZXing Fake result: " + resultText + ", displayValue:" + resultText
+                          //     + " format:" + format);
+                          resultArray.add(resultMap); 
                         } 
                       }
 
@@ -754,33 +793,105 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
     return -1;
   }
  
-  VisionCameraCodeScannerPlugin(@NonNull VisionCameraProxy proxy, @Nullable Map<String, Object> options) {
-    super();
-    this.context = proxy.getContext();
-    Log.d("VisionCameraCodeScannerPlugin", "VisionCameraCodeScannerPlugin init with options: " + options);
-  }
+  
+  //  private Bitmap convertImageProxyToBitmap(ImageProxy imageProxy) {
+  //   @SuppressLint("UnsafeOptInUsageError")
+  //   Image image = imageProxy.getImage();
+  //   // Log.d("ZXingScan", "got the iamge");
+  //   if (image == null) {
+  //     // Log.d("ZXingScan", "returnign null");
+  //     return null;
+  //   }
+  //   // Log.d("ZXingScan", "before conversion");
+  //   YuvToRgbConverter yuvToRgbConverter = new YuvToRgbConverter(context);
+  //   // Log.d("ZXingScan", "after conversion");
+  //   return yuvToRgbConverter.yuvToRgb(image);
+  // }
 
-   private Bitmap convertImageProxyToBitmap(ImageProxy imageProxy) {
-    @SuppressLint("UnsafeOptInUsageError")
+  @SuppressLint("UnsafeOptInUsageError")
+  private Bitmap convertImageProxyToBitmap(ImageProxy imageProxy) {
     Image image = imageProxy.getImage();
-    // Log.d("ZXingScan", "got the iamge");
-    if (image == null) {
-      // Log.d("ZXingScan", "returnign null");
-      return null;
-    }
-    // Log.d("ZXingScan", "before conversion");
-    YuvToRgbConverter yuvToRgbConverter = new YuvToRgbConverter(context);
-    // Log.d("ZXingScan", "after conversion");
-    return yuvToRgbConverter.yuvToRgb(image);
+    if (image == null) return null;
+
+    int width = image.getWidth();
+    int height = image.getHeight();
+
+    ByteBuffer yBuffer = image.getPlanes()[0].getBuffer(); // Y
+    ByteBuffer uBuffer = image.getPlanes()[1].getBuffer(); // U
+    ByteBuffer vBuffer = image.getPlanes()[2].getBuffer(); // V
+
+    int ySize = yBuffer.remaining();
+    int uSize = uBuffer.remaining();
+    int vSize = vBuffer.remaining();
+
+    byte[] nv21 = new byte[ySize + uSize + vSize];
+
+    // Fill NV21 byte array — VU order for NV21
+    yBuffer.get(nv21, 0, ySize);
+    vBuffer.get(nv21, ySize, vSize);
+    uBuffer.get(nv21, ySize + vSize, uSize);
+
+    // Convert to OpenCV Mat
+    Mat yuvMat = new Mat(height + height / 2, width, CvType.CV_8UC1);
+    yuvMat.put(0, 0, nv21);
+
+    // Convert to RGB
+    Mat rgbMat = new Mat();
+    Imgproc.cvtColor(yuvMat, rgbMat, Imgproc.COLOR_YUV2RGB_NV21);
+
+    // Convert to Bitmap
+    Bitmap bitmap = Bitmap.createBitmap(rgbMat.cols(), rgbMat.rows(), Bitmap.Config.ARGB_8888);
+    Utils.matToBitmap(rgbMat, bitmap);
+
+    // Cleanup
+    yuvMat.release();
+    rgbMat.release();
+
+    return bitmap;
   }
 
-  private Bitmap rotateBitmapIfNeeded(Bitmap source, int rotationDegrees) {
-    Log.d("ZXingScan", "rotationDegrees..........." + rotationDegrees);
-    if (rotationDegrees == 0)
-      return source;
+
+  private Bitmap rotateBitmap(Bitmap src, int angle) {
     Matrix matrix = new Matrix();
-    matrix.postRotate(rotationDegrees);
-    return Bitmap.createBitmap(source, 0, 0, source.getWidth(), source.getHeight(), matrix, true);
+    matrix.postRotate(angle);
+    return Bitmap.createBitmap(src, 0, 0, src.getWidth(), src.getHeight(), matrix, true);
+  }
+
+  private Bitmap rotateBitmapOpenCV(Bitmap srcBitmap, float angleDegrees) {
+    if (srcBitmap == null) return null;
+
+    // Step 1: Convert Bitmap to Mat
+    Mat srcMat = new Mat();
+    Utils.bitmapToMat(srcBitmap, srcMat);
+
+    // Step 2: Compute rotation matrix
+    Point center = new Point(srcMat.cols() / 2.0, srcMat.rows() / 2.0);
+    Mat rotationMatrix = Imgproc.getRotationMatrix2D(center, angleDegrees, 1.0);
+
+    // Step 3: Compute bounding rectangle after rotation
+    RotatedRect rotatedRect = new RotatedRect(center, srcMat.size(), angleDegrees);
+    org.opencv.core.Rect bbox = rotatedRect.boundingRect();
+
+    // Step 4: Adjust transformation to keep image centered
+    double[] mat0 = rotationMatrix.get(0, 2);
+    double[] mat1 = rotationMatrix.get(1, 2);
+    rotationMatrix.put(0, 2, mat0[0] + bbox.width / 2.0 - center.x);
+    rotationMatrix.put(1, 2, mat1[0] + bbox.height / 2.0 - center.y);
+
+    // Step 5: Rotate the image
+    Mat rotatedMat = new Mat();
+    Imgproc.warpAffine(srcMat, rotatedMat, rotationMatrix, bbox.size());
+
+    // Step 6: Convert back to Bitmap
+    Bitmap rotatedBitmap = Bitmap.createBitmap(rotatedMat.cols(), rotatedMat.rows(), Bitmap.Config.ARGB_8888);
+    Utils.matToBitmap(rotatedMat, rotatedBitmap);
+
+    // Step 7: Release Mats
+    srcMat.release();
+    rotatedMat.release();
+    rotationMatrix.release();
+
+    return rotatedBitmap;
   }
 
   // Grok AI

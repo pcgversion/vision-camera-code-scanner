@@ -14,6 +14,7 @@ import org.tensorflow.lite.support.common.FileUtil;
 import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
 import org.tensorflow.lite.support.image.TensorImage;
+import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.task.core.BaseOptions;
 import org.tensorflow.lite.task.vision.detector.Detection;
 import org.tensorflow.lite.task.vision.detector.ObjectDetector;
@@ -44,12 +45,12 @@ public class BarcodeDetectorHelper {
     private int modelSize = 1024;
     private static final String[] LABELS = {"barcode", "unknown"};
 
-    public BarcodeDetectorHelper(String modelName, Integer detectorMode, Boolean shouldEnableClassification, Boolean shouldEnableMultipleObjects, Integer modelImageSize, Float thresold,  ReactApplicationContext context) {
+    public BarcodeDetectorHelper(String modelName, Integer detectorMode, Boolean shouldEnableClassification, Boolean shouldEnableMultipleObjects, Integer modelImageSize, Float threshold,  ReactApplicationContext context) {
         this.modelName = modelName;
         this.context = context;
         this.modelSize = modelImageSize != null ? modelImageSize : 1024;
-        this.threshold = thresold != null ? thresold : 0.5f;    
-        
+        this.threshold = threshold != null ? threshold : 0.5f;
+
         setUpObjectInterpreter();
     }
 
@@ -83,9 +84,9 @@ public class BarcodeDetectorHelper {
         }
     }
 
-    
+
     public List<Map<String, Object>>detectFrameProcessor(Bitmap image) {
-        
+
         if(objectInterpreter == null)
             setUpObjectInterpreter();
 
@@ -95,26 +96,28 @@ public class BarcodeDetectorHelper {
             int originalWidth = image.getWidth();
             int originalHeight = image.getHeight();
 
-            Bitmap resizedBitmap = Bitmap.createScaledBitmap(image, this.modelSize, this.modelSize, true);
+            //Bitmap resizedBitmap = Bitmap.createScaledBitmap(image, this.modelSize, this.modelSize, true);
 
-            TensorImage tensorImage = TensorImage.fromBitmap(resizedBitmap);
+            TensorImage tensorImage = TensorImage.fromBitmap(image);
             ImageProcessor imageProcessor = new ImageProcessor.Builder()
-                .add(new NormalizeOp(0f, 255f))
-                .build();
+                    .add(new ResizeOp(this.modelSize, this.modelSize, ResizeOp.ResizeMethod.BILINEAR))
+                    .add(new NormalizeOp(0f, 255f))
+                    .build();
             TensorImage processedImage = imageProcessor.process(tensorImage);
 
             int[] outputShape = objectInterpreter.getOutputTensor(0).shape();
             float[][][] output = new float[outputShape[0]][outputShape[1]][outputShape[2]];
             objectInterpreter.run(processedImage.getBuffer(), output);
-       
-            // Convert the output to a list of detections    
+
+            // Convert the output to a list of detections
             List<Map<String, Object>> detections = parseDetections(output, originalWidth, originalHeight);
             inferenceTime = SystemClock.uptimeMillis() - inferenceTime;
             return detections;
             //return objectDetector.detect(processedImage);
 
-        } finally {
-            clearObjectInterpreter();
+        } catch (Exception e) {
+            Log.d("BarcodeDetectorHelper", "Error during object detection.", e);
+            return new ArrayList<>(); // Return empty list on error
         }
     }
 
@@ -138,8 +141,8 @@ public class BarcodeDetectorHelper {
                 }
 
                 float angleInDegrees = (float) Math.toDegrees(angleRad);
-                //Log.d("BarcodeDetector "+ i, "Angle: " + angleRad + ", " + angleInDegrees);    
-                
+                //Log.d("BarcodeDetector "+ i, "Angle: " + angleRad + ", " + angleInDegrees);
+
                 Map<String, Object> detection = new HashMap<>();
                 detection.put("x1", mappedCorners.get(0).x);
                 detection.put("y1", mappedCorners.get(0).y);
@@ -166,7 +169,7 @@ public class BarcodeDetectorHelper {
         float hh = h / 2;
 
         float[][] relCorners = {
-            {-hw, -hh}, {hw, -hh}, {hw, hh}, {-hw, hh}
+                {-hw, -hh}, {hw, -hh}, {hw, hh}, {-hw, hh}
         };
 
         List<PointF> result = new ArrayList<>();
