@@ -2,28 +2,22 @@ package com.visioncameracodescanner;
 
 import static com.visioncameracodescanner.BarcodeConverter.convertToArray;
 import static com.visioncameracodescanner.BarcodeConverter.convertToMap;
+import com.mrousavy.camera.react.GraphicOverlay;
 
-import com.google.mlkit.common.MlKitException;
-import com.visioncameracodescanner.BarcodeDetectorHelper;
 import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.ColorMatrix;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
-//import android.graphics.Point;
-import android.graphics.PointF;
+
 import android.graphics.Rect;
 import android.media.Image;
 
-import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
-import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.ReadableNativeArray;
 import com.facebook.react.bridge.ReadableNativeMap;
 import com.facebook.react.bridge.WritableNativeArray;
-import com.facebook.react.bridge.WritableNativeMap;
 
 import org.jetbrains.annotations.NotNull; // Add this import
 import androidx.camera.core.ImageProxy;
@@ -37,18 +31,13 @@ import com.google.mlkit.vision.barcode.BarcodeScanner;
 import com.google.mlkit.vision.barcode.BarcodeScanning;
 import com.google.mlkit.vision.barcode.BarcodeScannerOptions;
 import com.google.mlkit.vision.common.InputImage;
-import com.google.mlkit.vision.common.internal.ImageConvertUtils;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.Collections;
-import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.Set;
 
 import java.io.File;
@@ -69,14 +58,8 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.google.zxing.*;
-import com.google.zxing.common.HybridBinarizer;
-import com.google.zxing.datamatrix.DataMatrixReader;
-import com.google.zxing.oned.rss.RSS14Reader;
-import com.google.zxing.common.GlobalHistogramBinarizer;
-import com.visioncameracodescanner.YuvToRgbConverter;
 
 import android.view.Display;
-import android.view.Surface;
 import android.view.WindowManager;
 
 // OpenCV core & image processing
@@ -94,9 +77,10 @@ import org.opencv.android.OpenCVLoader;
 import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.core.RotatedRect;
 
-
 import zxingcpp.BarcodeReader;
 
+import com.facebook.react.bridge.WritableArray;
+import com.facebook.react.bridge.WritableNativeMap;
 public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
   
    static {
@@ -155,8 +139,10 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
   @Override
   public Object callback(@NotNull Frame frame, @Nullable Map<String, Object> params) {
-    
-    
+
+    List<android.graphics.Point[]> resultCornerPoints = new ArrayList<>();
+    List<Integer> formatType = new ArrayList<>();
+    GraphicOverlay targetOverlay = com.mrousavy.camera.react.CameraView.getActiveBarcodeGraphicOverlay();
     ImageProxy imageProxy;
 
     try {
@@ -165,7 +151,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
       e.printStackTrace();
       return null;
     }
-    
+
     
     WritableNativeArray typesArray = new WritableNativeArray();
 
@@ -203,6 +189,8 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
     if (mediaImage != null) {
       
       ArrayList<Task<List<Barcode>>> tasks = new ArrayList<Task<List<Barcode>>>();
+
+
       if(deviceRotation == 0)
         newRotation = 90;
       if(deviceRotation == 1)
@@ -218,9 +206,13 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
       bitmap = rotateBitmap(tempBitmap, newRotation);
 
       boolean detectMarkerOnly = true;
+      boolean showNativeOverlay = false;
 
       if(scannerOptions != null && scannerOptions.containsKey("detectMarkerOnly"))
         detectMarkerOnly = scannerOptions.get("detectMarkerOnly") != null ? (boolean) scannerOptions.get("detectMarkerOnly") : true;
+
+      if(scannerOptions != null && scannerOptions.containsKey("showNativeOverlay"))
+        showNativeOverlay = scannerOptions.get("showNativeOverlay") != null ? (boolean) scannerOptions.get("showNativeOverlay") : false;
 
 
       if (scannerOptions != null && scannerOptions.containsKey("checkInverted")) {
@@ -252,25 +244,41 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
         }
 
         List<Map<String, Object>> resultArray = new ArrayList<>();
-
+        if (targetOverlay != null && showNativeOverlay) {
+          targetOverlay.setImageWidth(bitmap.getWidth());
+          targetOverlay.setImageHeight(bitmap.getHeight());
+          // targetOverlay.setMirrored(...); // If isMirrored is a property with a setter
+          // targetOverlay.clear();
+        }
         for (Barcode barcode : barcodes) {
           if (barcode.getRawValue() != null && !barcode.getRawValue().trim().isEmpty()) {
             resultArray.add(convertBarcode(barcode));
+            if(showNativeOverlay) {
+              android.graphics.Point[] points = barcode.getCornerPoints();
+              if (points != null) {
+                resultCornerPoints.add(points); // Call your conversion method
+                formatType.add(barcode.getFormat());
+              }
+            }
           }
+
         }
+
+
+
+
         //we have to run AI Model against the frame
         //detect there is any plu code is present or not
         if ( scannerOptions != null )
         {
           //Bitmap bitmap = null;
           try {
-       
             //bitmap = ImageConvertUtils.getInstance().getUpRightBitmap(image);
             var detectorMode = scannerOptions.get("detectorMode") != null ?  scannerOptions.get("detectorMode") : 1;
             var shouldEnableClassification = scannerOptions.get("shouldEnableClassification") != null ?  scannerOptions.get("shouldEnableClassification") : false;
             var shouldEnableMultipleObjects = scannerOptions.get("shouldEnableMultipleObjects") != null ? scannerOptions.get("shouldEnableMultipleObjects") : true;  
             var modelName = scannerOptions.get("modelName") != null ?  scannerOptions.get("modelName") : "yolo11-obb-od";
-            var modelImageSize = scannerOptions.get("modelImageSize") != null ?  scannerOptions.get("modelImageSize") : 1024;
+            Integer modelImageSize  = scannerOptions.get("modelImageSize") != null ?  ((Number) scannerOptions.get("modelImageSize")).intValue() : 1024;
             var threshold = scannerOptions.get("threshold") != null ?  ((Number) scannerOptions.get("threshold")).floatValue()  : 0.5f;
             if(barcodeDetectorHelper == null)
             barcodeDetectorHelper = new BarcodeDetectorHelper(
@@ -278,7 +286,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                 detectorMode instanceof Integer ? (Integer) detectorMode : 1,
                 shouldEnableClassification instanceof Boolean ? (Boolean) shouldEnableClassification : false,
                 shouldEnableMultipleObjects instanceof Boolean ? (Boolean) shouldEnableMultipleObjects : true,
-                modelImageSize instanceof Integer ? (Integer) modelImageSize : 1024,
+                modelImageSize,
                 threshold,
                 (ReactApplicationContext) context
             );
@@ -309,12 +317,15 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
             
             //Lets perform if we got any plu codes
             try {
+
+                //MlImage mlImage = new MediaMlImageBuilder(mediaImage).setRotation(newRotation).build();
                 List<Map<String, Object>> pluCodeMarkers = barcodeDetectorHelper.detectFrameProcessor(bitmap);
+
                 int outputObjectIndex = 1;
 
                 if (pluCodeMarkers.size() > 0 && !isProcessingFallback) {
                   isProcessingFallback = true; // Set flag
-                  for (Map<String, Object> detection : pluCodeMarkers) 
+                  for (Map<String, Object> detection : pluCodeMarkers)
                   {
                     float x1 = ((Number) detection.get("x1")).floatValue();
                     float y1 = ((Number) detection.get("y1")).floatValue();
@@ -364,6 +375,17 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
                     cornerPoints.add(pt4);
 
+                    // Create Point[] for the current detection's corner points
+                    android.graphics.Point[] currentPoints = new android.graphics.Point[4];
+                    currentPoints[0] = new android.graphics.Point((int) x1, (int) y1);
+                    currentPoints[1] = new android.graphics.Point((int) x2, (int) y2);
+                    currentPoints[2] = new android.graphics.Point((int) x3, (int) y3);
+                    currentPoints[3] = new android.graphics.Point((int) x4, (int) y4);
+
+                    // Add these Point[] to the list that collects points for all detections
+                    if(showNativeOverlay)
+                    resultCornerPoints.add(currentPoints);
+
                     // enable below logic to crop bitmap
                     // Expand the rectangle by padding (in all directions)
                     // float padding = 150f; // or your desired value
@@ -371,12 +393,14 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                     // minY = Math.max(0, minY - padding);
                     // maxX = Math.min(bitmap.getWidth() - 1, maxX + padding);
                     // maxY = Math.min(bitmap.getHeight() - 1, maxY + padding);
-                    
-                    
-                    
+
+
+
                       Set<String> tempResultsTexts = new HashSet<>();
-                      if (!detectMarkerOnly) 
+                      if (!detectMarkerOnly)
                       {
+                        System.out.println("does it comes here");
+
                         int cropX = (int) minX;
                         int cropY = (int) minY;
                         int cropWidth = (int) (maxX - minX);
@@ -432,7 +456,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                           //Bitmap bitmapForZXing = croppedBitmap;
                           //matrix.reset();
                           // Rotate counter-clockwise by the angle
-                         
+
                           //matrix.postRotate(k == 0 ? -angle : (70 - angle)); // negative for counter-clockwise
                           // Create the rotated bitmap (may have transparent background)
                           //Bitmap bitmapForZXing = Bitmap.createBitmap(croppedBitmap, 0, 0, croppedBitmap.getWidth(),croppedBitmap.getHeight(), matrix, true);
@@ -452,7 +476,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                           // Log.d("ZXingScan " + k + ":", "Rotated bitmap by " + (angle) + " degrees for ZXing decode.");
 
                           //Note: After scanning start we scan rotated bitmaps against the zxing-cpp barcode reader
-                          //We get result correct for barcode values, format, angle, type but cornerPoints and boundingBox 
+                          //We get result correct for barcode values, format, angle, type but cornerPoints and boundingBox
                           //values we can not use since its rotated image not the same as frame
                           Rect cropRect = new Rect(0, 0, bitmapForZXing.getWidth(), bitmapForZXing.getHeight());
                           List<BarcodeReader.Result> rzcppResults = zxingBarcodeReader.read(bitmapForZXing, cropRect,
@@ -539,7 +563,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                             }
                           }
                         }
-                        
+
                       } else {
                         //while only scanning need to feed fake plu barcodes info
                         // but cornerPoints, angle and boundingBox data is correct
@@ -549,6 +573,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                         Map<String, Object> barcodeData = new HashMap<>();
                         barcodeData.put("data", resultText);
                         barcodeData.put("type", "5");
+                        formatType.add(5);
                         if (!tempResultsTexts.contains(resultText)) {
                           tempResultsTexts.add(resultText);
                           Map<String, Object> resultMap = new HashMap<>();
@@ -561,8 +586,8 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                           resultMap.put("content", barcodeData);
                           // Log.d("ZXingScan", "Adding ZXing Fake result: " + resultText + ", displayValue:" + resultText
                           //     + " format:" + format);
-                          resultArray.add(resultMap); 
-                        } 
+                          resultArray.add(resultMap);
+                        }
                       }
 
                     // Log.d("Detection", "x1=" + x1 + ", y1=" + y1 + ", classId=" + classId + ", confidence=" + confidence
@@ -582,6 +607,47 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
             e.printStackTrace();
           }
         }
+        if(showNativeOverlay) {
+          if (targetOverlay != null) {
+            targetOverlay.post(new Runnable() {
+              @Override
+              public void run() {
+                // Since this Runnable is posted from a non-null targetOverlay,
+                // and executed on its UI thread, targetOverlay can be safely used here.
+                targetOverlay.clear();
+                var i = 0;
+                for (android.graphics.Point[] points : resultCornerPoints) {
+                  if (points != null) { // Added null checks for safety
+
+                    // Assuming the constructor of TextBlockGraphic is public
+                    // and matches these parameters.
+                    // The "ocr" string needs to be handled if it's a parameter in your TextBlockGraphic constructor.
+                    // If TextBlockGraphic constructor in Java is:
+                    // TextBlockGraphic(GraphicOverlay overlay, Text.TextBlock block, String type)
+                    var  tempBarcodeFormat = formatType.get(i);
+                    Log.d("VCSPlugin", "test:" + tempBarcodeFormat);
+                    targetOverlay.add(
+                            new GraphicOverlay.TextBlockGraphic(targetOverlay, points, "barcode", 0)
+                    );
+                    i++;
+                    // If TextBlockGraphic constructor in Java (matching your Kotlin example) is:
+                    // TextBlockGraphic(GraphicOverlay overlay, Text.TextBlock block)
+                    // Then you might not pass "ocr", or the "ocr" was a tag used elsewhere
+                    // and not a constructor param for TextBlockGraphic directly.
+                    // Let's assume your Kotlin version of TextBlockGraphic was
+                    // class TextBlockGraphic(overlay: GraphicOverlay, private val textBlock: Text.TextBlock, private val type: String)
+                    // then the Java call would be correct as above.
+                  }
+                }
+
+
+              }
+            });
+          } else {
+            Log.w("YourPluginTag", "targetOverlay is null, cannot post UI updates.");
+          }
+        }
+
         return resultArray;
 
       } catch (Exception e) {
@@ -590,8 +656,21 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
     }
     return null;
   }
+  // MODIFY convertToArray to return WritableArray
+  private WritableArray convertPointsToWritableArray(Point[] points) {
+    WritableNativeArray array = new WritableNativeArray();
+    if (points != null) {
+      for (Point point : points) {
+        WritableNativeMap map = new WritableNativeMap();
+        map.putInt("x", (int) point.x);
+        map.putInt("y", (int) point.y);
+        array.pushMap(map);
+      }
+    }
+    return array;
+  }
 
-  
+
   private void createBarcodeInstance(Object formatTypes) {
     if (formatTypes != null) {
       ReadableNativeArray rawFormats = (ReadableNativeArray) formatTypes;

@@ -4,15 +4,18 @@ import android.content.Context;
 import android.graphics.Bitmap;
 import android.os.SystemClock;
 import android.util.Log;
-
+import com.google.mlkit.vision.common.InputImage;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.google.android.odml.image.MlImage;
 
+import org.tensorflow.lite.DataType;
 import org.tensorflow.lite.Interpreter;
 import org.tensorflow.lite.gpu.CompatibilityList;
+import org.tensorflow.lite.gpu.GpuDelegate;
 import org.tensorflow.lite.support.common.FileUtil;
 import org.tensorflow.lite.support.common.ops.NormalizeOp;
 import org.tensorflow.lite.support.image.ImageProcessor;
+import org.tensorflow.lite.support.image.MlImageAdapter;
 import org.tensorflow.lite.support.image.TensorImage;
 import org.tensorflow.lite.support.image.ops.ResizeOp;
 import org.tensorflow.lite.task.core.BaseOptions;
@@ -39,9 +42,11 @@ public class BarcodeDetectorHelper {
     private int currentModel = 2;
     private String modelName;
     private final ReactApplicationContext context;
-
+    private ImageProcessor reusableImageProcessor = null;
+    private MlImageAdapter resuableMlImageAdapter = null;
     private ObjectDetector objectDetector = null;
     private Interpreter objectInterpreter = null;
+
     private int modelSize = 1024;
     private static final String[] LABELS = {"barcode", "unknown"};
 
@@ -50,7 +55,6 @@ public class BarcodeDetectorHelper {
         this.context = context;
         this.modelSize = modelImageSize != null ? modelImageSize : 1024;
         this.threshold = threshold != null ? threshold : 0.5f;
-
         setUpObjectInterpreter();
     }
 
@@ -76,9 +80,8 @@ public class BarcodeDetectorHelper {
             FileChannel fileChannel = fileInputStream.getChannel();
             long declaredLength = fileChannel.size();
             MappedByteBuffer modelBuffer = fileChannel.map(FileChannel.MapMode.READ_ONLY, 0, declaredLength);
-
             objectInterpreter = new Interpreter(modelBuffer);
-            System.out.println("Loaded model from: " + modelFile.getAbsolutePath());
+
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -95,17 +98,29 @@ public class BarcodeDetectorHelper {
 
             int originalWidth = image.getWidth();
             int originalHeight = image.getHeight();
+            //System.out.println("Model Size: "+this.modelSize);
 
-            //Bitmap resizedBitmap = Bitmap.createScaledBitmap(image, this.modelSize, this.modelSize, true);
-
-            TensorImage tensorImage = TensorImage.fromBitmap(image);
-            ImageProcessor imageProcessor = new ImageProcessor.Builder()
-                    .add(new ResizeOp(this.modelSize, this.modelSize, ResizeOp.ResizeMethod.BILINEAR))
-                    .add(new NormalizeOp(0f, 255f))
+            //Bitmap resizedBitmap = Bitmap.createScaledBitmap(image, this.modelSize, this.modelSize, false);
+            if (reusableImageProcessor == null) {
+                reusableImageProcessor = new ImageProcessor.Builder()
+                    .add(new ResizeOp(this.modelSize, this.modelSize, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR)) // Faster than BILINEAR
+                    .add(new NormalizeOp(0, 255.0f))
                     .build();
-            TensorImage processedImage = imageProcessor.process(tensorImage);
+            }
+
+            TensorImage tensorImage = new TensorImage(DataType.FLOAT32);
+            tensorImage.load(image);
+
+            //TensorImage tensorImage = MlImageAdapter.createTensorImageFrom(image);
+            // ImageProcessor imageProcessor = new ImageProcessor.Builder()
+            //         .add(new ResizeOp(this.modelSize, this.modelSize, ResizeOp.ResizeMethod.NEAREST_NEIGHBOR))
+            //         .add(new NormalizeOp(0f, 255f))
+            //         .build();
+            TensorImage processedImage = reusableImageProcessor.process(tensorImage);
 
             int[] outputShape = objectInterpreter.getOutputTensor(0).shape();
+            // To print it, you can just add:
+            //System.out.println("Model Output Shape: " +outputShape[2]);
             float[][][] output = new float[outputShape[0]][outputShape[1]][outputShape[2]];
             objectInterpreter.run(processedImage.getBuffer(), output);
 
@@ -124,11 +139,13 @@ public class BarcodeDetectorHelper {
     private List<Map<String, Object>> parseDetections(float[][][] output, int originalWidth, int originalHeight) {
         List<Map<String, Object>> detections = new ArrayList<>();
         for (int i = 0; i < output[0].length; i++) {
+            if(i>10) break;
             float[] prediction = output[0][i];
             float confidence = prediction[4];
             int classIdx = (int) prediction[5];
             String classId = classIdx < LABELS.length ? LABELS[classIdx] : "unknown";
-            if (confidence >= threshold) {
+
+            if (confidence >= this.threshold) {
                 float xPx = prediction[0] * this.modelSize;
                 float yPx = prediction[1] * this.modelSize;
                 float wPx = prediction[2] * this.modelSize;
@@ -157,6 +174,8 @@ public class BarcodeDetectorHelper {
                 detection.put("angle", angleInDegrees);
 
                 detections.add(detection);
+
+
             }
         }
         return detections;

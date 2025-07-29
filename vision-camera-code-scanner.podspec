@@ -22,4 +22,7 @@ Pod::Spec.new do |s|
   s.dependency "React-Core"
   s.dependency "VisionCamera"
   s.dependency "GoogleMLKit/BarcodeScanning"
+  s.dependency "zxing-cpp", "2.3.0"
+  s.dependency 'GoogleMLKit/ObjectDetection'
+  s.dependency "TensorFlowLiteSwift"
 end
