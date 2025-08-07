@@ -555,6 +555,11 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                                 resultMap.put("cornerPoints", zcornerPoints);
                                 resultMap.put("content", zcontentData);
                                 resultArray.add(resultMap);
+                                if ("RSS_14".equals(bFormat)) { // Or use a proper mapping
+                                  formatType.add(5);
+                                } else {
+                                  formatType.add(0); // Define UNKNOWN_FORMAT_TYPE_INT
+                                }
                               }
 
                             }
@@ -625,9 +630,9 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                     // If TextBlockGraphic constructor in Java is:
                     // TextBlockGraphic(GraphicOverlay overlay, Text.TextBlock block, String type)
                     var  tempBarcodeFormat = formatType.get(i);
-                    Log.d("VCSPlugin", "test:" + tempBarcodeFormat);
+
                     targetOverlay.add(
-                            new GraphicOverlay.TextBlockGraphic(targetOverlay, points, "barcode", 0)
+                            new GraphicOverlay.TextBlockGraphic(targetOverlay, points, "barcode", tempBarcodeFormat)
                     );
                     i++;
                     // If TextBlockGraphic constructor in Java (matching your Kotlin example) is:
