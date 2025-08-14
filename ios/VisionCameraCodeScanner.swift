@@ -22,6 +22,7 @@ import ImageIO
 import MobileCoreServices
 import ZXingCpp
 
+
 @objc(VisionCameraCodeScanner)
 public class VisionCameraCodeScanner: FrameProcessorPlugin {
     
@@ -208,7 +209,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
                                 }
 
                                 let croppedUIImage = UIImage(cgImage: croppedCGImage)
-                                let resizedCropped = croppedUIImage.resized(to: CGSize(width: 300, height: 300))
+                                let resizedCropped = croppedUIImage.resized(to: CGSize(width: 640, height: 640))
                                 let rotatedCropped = rotate(bitmap: resizedCropped, byDegrees: rotationAngle, imgIndex: k)
 
                                 guard let ciRotated = CIImage(image: rotatedCropped) else {
@@ -220,8 +221,82 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
 //                                guard let rotatedCIImage = CIImage(image: rotate(bitmap: cropped, byDegrees: rotationAngle, imgIndex: k)) else {
 //                                    continue
 //                                }
+                                // ...Plu Barcode reading using js function...
+                                if let (grayscaleBytes, width, height) = ciImageToGrayscaleBytes(ciRotated) {
+                                    let grayscaleData = Data(grayscaleBytes) // Your [UInt8] to Data conversion
 
-                                do {
+                                    let resultCharPtr: UnsafePointer<CChar>? = grayscaleData.withUnsafeBytes { (rawBufferPointer: UnsafeRawBufferPointer) -> UnsafePointer<CChar>? in
+                                        guard let baseAddress = rawBufferPointer.baseAddress else {
+                                            print("Error: Could not get base address of grayscale data.")
+                                            return nil
+                                        }
+                                        let rowStride = Int32(width) // Assuming tightly packed grayscale data
+                                        
+                                        // Call the new extern "C" function
+                                        return callNativeDecode(baseAddress.assumingMemoryBound(to: UInt8.self),
+                                                                Int32(width),
+                                                                Int32(height),
+                                                                rowStride)
+                                    }
+
+                                    if let validCharPtr = resultCharPtr {
+                                        let resultJsonString = String(cString: validCharPtr)
+                                        // Now you must free the memory allocated by strdup in C++
+                                        free_decoded_string(validCharPtr)
+
+                                        if !resultJsonString.isEmpty {
+                                            print("ZXing JSON result: \(resultJsonString)")
+                                            // Here, parse the resultJsonString if needed or directly use it
+                                            // For example, convert JSON string to a Dictionary
+                                            if let jsonData = resultJsonString.data(using: .utf8) {
+                                                do {
+                                                    if let jsonDict = try JSONSerialization.jsonObject(with: jsonData, options: []) as? [String: Any] {
+                                                        // Create your resultMap for barCodeAttributes
+                                                        // This part needs careful mapping from your C++ JSON to the Swift dictionary structure
+                                                        var resultMap: [String: Any] = [:]
+                                                        resultMap["rawValue"] = jsonDict["text"]
+                                                        resultMap["displayValue"] = jsonDict["text"] // Or process as needed
+                                                        
+                                                        // Map format string to your integer representation if necessary
+                                                        if let formatString = jsonDict["format"] as? String {
+                                                            // Example: you'd need a mapping from "QRCode" -> your Int format
+                                                            // For now, just using a placeholder or the string itself
+                                                            resultMap["format"] = mapZxingFormatStringToInteger(formatString) // Implement this mapping
+                                                        }
+                                                        
+                                                         resultMap["angle"] = Int(angle) // You still need the angle from your pluCodeMarkers detection
+                                                        
+                                                        if let pointsArray = jsonDict["points"] as? [[String: Double]] {
+                                                            let cgPoints = pointsArray.map { CGPoint(x: $0["x"] ?? 0, y: $0["y"] ?? 0) }
+                                                            let zxBoundingBox = calculateBoundingBox(from: cgPoints) // Your existing Swift func
+                                                             resultMap["boundingBox"] = [
+                                                                 "left": Int(zxBoundingBox.minX),
+                                                                 "top": Int(zxBoundingBox.minY),
+                                                                 "right": Int(zxBoundingBox.maxX),
+                                                                 "bottom": Int(zxBoundingBox.maxY)
+                                                             ]
+                                                            resultMap["cornerPoints"] = pointsArray.map { ["x": Int($0["x"] ?? 0), "y": Int($0["y"] ?? 0)] }
+                                                        }
+                                                        
+                                                        resultMap["content"] = ["type": 5, "data": jsonDict["text"]] // Adjust 'type' as needed
+                                                        
+                                                        barCodeAttributes.append(resultMap) // Add to your results
+                                                        print("Processed resultMap: \(resultMap)")
+                                                    }
+                                                } catch {
+                                                    print("Error deserializing JSON from nativeDecode: \(error)")
+                                                }
+                                            }
+                                        } else {
+                                            print("nativeDecode returned an empty string after freeing.")
+                                        }
+                                    } else {
+                                        print("callNativeDecode returned null.")
+                                    }
+                                }
+                                // ...End of Plu Barcode reading using js function...
+                                
+                                /*do {
                                     let results = try zxingReader.read(ciRotated)
                                     for result in results where !tempResults.contains(result.text) {
                                         tempResults.insert(result.text)
@@ -249,7 +324,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
                                 } catch {
                                     print("ZXing decoding failed: \(error)")
                                     continue
-                                }
+                                }*/
                             }
                         } else {
                             let fakeText = "123456_\(outputObjectIndex)"
@@ -288,6 +363,37 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
             return [:]
         }
         return barCodeAttributes
+    }
+    
+    // Helper function to map ZXing format string to your app's integer codes
+    func mapZxingFormatStringToInteger(_ formatString: String) -> String {
+        // This is an example, expand with all formats you expect from ZXing
+        switch formatString {
+        case "DataBar": return "RSS_14"
+        // ... add other ZXing::BarcodeFormat string representations
+        default: return formatString // Unknown or unmapped
+        }
+    }
+    func ciImageToGrayscaleBytes(_ ciImage: CIImage) -> (bytes: [UInt8], width: Int, height: Int)? {
+        let context = CIContext()
+        guard let cgImage = context.createCGImage(ciImage, from: ciImage.extent) else { return nil }
+        let width = cgImage.width
+        let height = cgImage.height
+
+        let colorSpace = CGColorSpaceCreateDeviceGray()
+        var grayscaleBytes = [UInt8](repeating: 0, count: width * height)
+        guard let bitmapContext = CGContext(
+            data: &grayscaleBytes,
+            width: width,
+            height: height,
+            bitsPerComponent: 8,
+            bytesPerRow: width,
+            space: colorSpace,
+            bitmapInfo: 0
+        ) else { return nil }
+
+        bitmapContext.draw(cgImage, in: CGRect(x: 0, y: 0, width: width, height: height))
+        return (grayscaleBytes, width, height)
     }
     func calculateBoundingBox(from points: [CGPoint]) -> (minX: CGFloat, minY: CGFloat, maxX: CGFloat, maxY: CGFloat) {
         var minX = CGFloat.greatestFiniteMagnitude

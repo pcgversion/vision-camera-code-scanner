@@ -8,12 +8,14 @@ import android.annotation.SuppressLint;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.ColorMatrix;
+import android.graphics.Color;
 import android.graphics.ColorMatrixColorFilter;
 import android.graphics.Paint;
 
 import android.graphics.Rect;
 import android.media.Image;
 
+import com.facebook.react.bridge.Arguments;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReadableNativeArray;
 import com.facebook.react.bridge.ReadableNativeMap;
@@ -78,6 +80,10 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.core.RotatedRect;
 
 import zxingcpp.BarcodeReader;
+import com.visioncameracodescanner.BarcodeDecoder;
+import org.json.JSONArray;
+import org.json.JSONObject;
+import com.facebook.react.bridge.WritableMap;
 
 import com.facebook.react.bridge.WritableArray;
 import com.facebook.react.bridge.WritableNativeMap;
@@ -127,9 +133,9 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
     //init zxing-cpp barcode reader
     BarcodeReader.Options zxingOptions = new BarcodeReader.Options();
-    zxingOptions.setTryRotate(true);
+    //zxingOptions.setTryRotate(true);
     zxingOptions.setTryHarder(true);
-    zxingOptions.setTryInvert(true);
+    //zxingOptions.setTryInvert(true);
     zxingOptions.setTryDownscale(true);
 
     
@@ -400,6 +406,11 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                       if (!detectMarkerOnly)
                       {
                         System.out.println("does it comes here");
+                        float padding = 150f; // or your desired value
+                        minX = Math.max(0, minX - padding);
+                        minY = Math.max(0, minY - padding);
+                        maxX = Math.min(bitmap.getWidth() - 1, maxX + padding);
+                        maxY = Math.min(bitmap.getHeight() - 1, maxY + padding);
 
                         int cropX = (int) minX;
                         int cropY = (int) minY;
@@ -460,7 +471,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                           //matrix.postRotate(k == 0 ? -angle : (70 - angle)); // negative for counter-clockwise
                           // Create the rotated bitmap (may have transparent background)
                           //Bitmap bitmapForZXing = Bitmap.createBitmap(croppedBitmap, 0, 0, croppedBitmap.getWidth(),croppedBitmap.getHeight(), matrix, true);
-                          Bitmap bitmapForZXing = rotateBitmapOpenCV(croppedBitmap, k == 0 ? -angle : (70 - angle));
+                          Bitmap bitmapForZXing2 = rotateBitmapOpenCV(croppedBitmap, k == 0 ? -angle : (70 - angle));
 
                           // File zfile = null;
                           // try {
@@ -478,27 +489,45 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                           //Note: After scanning start we scan rotated bitmaps against the zxing-cpp barcode reader
                           //We get result correct for barcode values, format, angle, type but cornerPoints and boundingBox
                           //values we can not use since its rotated image not the same as frame
-                          Rect cropRect = new Rect(0, 0, bitmapForZXing.getWidth(), bitmapForZXing.getHeight());
-                          List<BarcodeReader.Result> rzcppResults = zxingBarcodeReader.read(bitmapForZXing, cropRect,
-                              0);
-                          if (!rzcppResults.isEmpty()) {
+                          //Rect cropRect = new Rect(0, 0, grayscaleBitmapForZXing.getWidth(), grayscaleBitmapForZXing.getHeight());
+                          // List<BarcodeReader.Result> rzcppResults = zxingBarcodeReader.read(grayscaleBitmapForZXing, cropRect,
+                          //     0);
                             //   Log.d("ZXingScan", "CPP Found " + zcppResults.size() + " barcodes with ZXing");
-                            for (BarcodeReader.Result result : rzcppResults) {
+                  
                               // Log.d("ZXingCPPScanAngle", "zxing-cpp Decoded text at Angle " + k + ": " + result.getText());
+                          int width = bitmapForZXing2.getWidth();
+                          int height = bitmapForZXing2.getHeight();
+                          byte[] grayscaleBytes = new byte[width * height];
 
+                          int[] pixels = new int[width * height];
+                          bitmapForZXing2.getPixels(pixels, 0, width, 0, 0, width, height);
+                          for (int i = 0; i < pixels.length; i++) {
+                            int color = pixels[i];
+                            int r = (color >> 16) & 0xFF;
+                            int g = (color >> 8) & 0xFF;
+                            int b = color & 0xFF;
                               // Process ZXing results as needed
-                              // Log.d("ZXingScan","Decoded barcode at Angled " + k + ": " + rzcppResults.size() + " results found.");
+                            grayscaleBytes[i] = (byte) ((r * 299 + g * 587 + b * 114) / 1000);
+                          }
 
-                              BarcodeReader.Position position = result.getPosition();
+                          String result = BarcodeDecoder.nativeDecode(grayscaleBytes, width, height);
+                          if(result != null && !result.isEmpty()) {
 
-                              float zx1 = ((Number) position.getTopLeft().x).floatValue();
-                              float zy1 = ((Number) position.getTopLeft().y).floatValue();
-                              float zx2 = ((Number) position.getTopRight().x).floatValue();
-                              float zy2 = ((Number) position.getTopRight().y).floatValue();
-                              float zx3 = ((Number) position.getBottomRight().x).floatValue();
-                              float zy3 = ((Number) position.getBottomRight().y).floatValue();
-                              float zx4 = ((Number) position.getBottomLeft().x).floatValue();
-                              float zy4 = ((Number) position.getBottomRight().y).floatValue();
+                              try {
+                      JSONObject json = new JSONObject(result);
+                      String rawValue = json.getString("text");
+                      String format = json.getString("format");
+                      JSONArray points = json.getJSONArray("points");
+                      if (!tempResultsTexts.contains(rawValue)) {
+                        tempResultsTexts.add(rawValue);
+                        float zx1 = (float) points.getJSONObject(0).getDouble("x");
+                        float zy1 = (float) points.getJSONObject(0).getDouble("y");
+                        float zx2 = (float) points.getJSONObject(1).getDouble("x");
+                        float zy2 = (float) points.getJSONObject(1).getDouble("y");
+                        float zx3 = (float) points.getJSONObject(2).getDouble("x");
+                        float zy3 = (float) points.getJSONObject(2).getDouble("y");
+                        float zx4 = (float) points.getJSONObject(3).getDouble("x");
+                        float zy4 = (float) points.getJSONObject(3).getDouble("y");
 
                               // Compute min/max for the original points
                               float zminX = Math.min(Math.min(zx1, zx2), Math.min(zx3, zx4));
@@ -536,16 +565,13 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
                               zcornerPoints.add(zpt4);
 
-                              String rawValue = (String) result.getText();
-                              String displayValue = (String) result.getText();
+                              String displayValue = rawValue;
                               String bFormat = "RSS_14";
                               String type = "5";
                               Map<String, Object> zcontentData = new HashMap<>();
                               zcontentData.put("type", type);
                               zcontentData.put("data", rawValue);
 
-                              if (!tempResultsTexts.contains(rawValue)) {
-                                tempResultsTexts.add(rawValue);
                                 Map<String, Object> resultMap = new HashMap<>();
                                 resultMap.put("rawValue", rawValue);
                                 resultMap.put("displayValue", displayValue);
@@ -561,10 +587,11 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                                   formatType.add(0); // Define UNKNOWN_FORMAT_TYPE_INT
                                 }
                               }
-
+                    } catch (Exception e) {
+                      Log.e("ZXingScanner", "Error parsing native ZXing result: " + e.getMessage());
                             }
-                            if (bitmapForZXing != null && !bitmapForZXing.isRecycled()) {
-                              bitmapForZXing.recycle();
+                            if (bitmapForZXing2 != null && !bitmapForZXing2.isRecycled()) {
+                              bitmapForZXing2.recycle();
                             }
                           }
                         }
@@ -1208,5 +1235,17 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
     return ordered;
   }
 
+  private Bitmap convertToGrayscale(Bitmap originalBitmap) {
+    if (originalBitmap == null) return null;
+    Bitmap grayscaleBitmap = Bitmap.createBitmap(originalBitmap.getWidth(), originalBitmap.getHeight(), Bitmap.Config.ARGB_8888); // Or ARGB_8888 if zxing-cpp handles it
+    Canvas canvas = new Canvas(grayscaleBitmap);
+    Paint paint = new Paint();
+    ColorMatrix colorMatrix = new ColorMatrix();
+    colorMatrix.setSaturation(0); // Convert to grayscale
+    ColorMatrixColorFilter filter = new ColorMatrixColorFilter(colorMatrix);
+    paint.setColorFilter(filter);
+    canvas.drawBitmap(originalBitmap, 0, 0, paint);
+    return grayscaleBitmap;
+  }
 }
 
