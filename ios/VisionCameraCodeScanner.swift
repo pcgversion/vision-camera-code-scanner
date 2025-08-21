@@ -100,8 +100,9 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
         var detectorMode: Int? = 1
         var shouldEnableClassification: Bool = false
         var shouldEnableMultipleObjects: Bool = true
+        var enablePluMarkersDetection: Bool = false
         var modelImageSize: Int? = 1024
-       var detectMarkerOnly: Bool = true
+        var detectMarkerOnly: Bool = true
         //var threshold: Float? = 0.5
         
         
@@ -110,6 +111,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
         modelImageSize = options["modelImageSize"] as? Int ?? 1024
         detectorMode = options["detectorMode"] as? Int ?? 1
         shouldEnableClassification = options["shouldEnableClassification"] as? Bool ?? false
+        enablePluMarkersDetection = options["enablePluMarkersDetection"] as? Bool ?? false
         shouldEnableMultipleObjects = options["shouldEnableMultipleObjects"] as? Bool ?? true
         var threshold: Double = {
             if let value = options["threshold"] as? Double {
@@ -153,7 +155,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
                     barCodeAttributes.append(Self.convertBarcode(barcode: barcode))
                 }
             }
-            
+            if(enablePluMarkersDetection){
             let BarcodeDetectorHelper = BarcodeDetectorHelper(modelPath: absoluteModelPath, modelName: modelName, scoreThreshold: Float(threshold) , maxResults: 3, mImageSize: modelImageSize!)
             guard let visionImage = uiImageToCVPixelBuffer(image: image) else {return []}
             // Preprocess the image and prepare input tensor
@@ -209,7 +211,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
                                 }
 
                                 let croppedUIImage = UIImage(cgImage: croppedCGImage)
-                                let resizedCropped = croppedUIImage.resized(to: CGSize(width: 640, height: 640))
+                                    let resizedCropped = croppedUIImage.resized(to: CGSize(width: 300, height: 300))
                                 let rotatedCropped = rotate(bitmap: resizedCropped, byDegrees: rotationAngle, imgIndex: k)
 
                                 guard let ciRotated = CIImage(image: rotatedCropped) else {
@@ -333,7 +335,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
                                 barCodeAttributes.append([
                                     "rawValue": fakeText,
                                     "displayValue": fakeText,
-                                    "format": 2048,
+                                        "format": "RSS_14",
                                     "angle": Int(angle),
                                     "boundingBox": [
                                         "left": Int(boundingBox.minX),
@@ -357,6 +359,7 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
                 let errorString = error.localizedDescription
                 let pData: [String: Any] = ["error": "On-Device object detection failed with error: \(errorString)"]
                 return pData;
+                }
             }
             
         } catch _ {

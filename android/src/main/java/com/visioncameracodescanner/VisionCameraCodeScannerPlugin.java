@@ -213,12 +213,15 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
       boolean detectMarkerOnly = true;
       boolean showNativeOverlay = false;
+      boolean enablePluMarkersDetection = false;
 
       if(scannerOptions != null && scannerOptions.containsKey("detectMarkerOnly"))
         detectMarkerOnly = scannerOptions.get("detectMarkerOnly") != null ? (boolean) scannerOptions.get("detectMarkerOnly") : true;
 
       if(scannerOptions != null && scannerOptions.containsKey("showNativeOverlay"))
         showNativeOverlay = scannerOptions.get("showNativeOverlay") != null ? (boolean) scannerOptions.get("showNativeOverlay") : false;
+      if(scannerOptions != null && scannerOptions.containsKey("enablePluMarkersDetection"))
+        enablePluMarkersDetection = scannerOptions.get("enablePluMarkersDetection") != null ? (boolean) scannerOptions.get("enablePluMarkersDetection") : false;
 
 
       if (scannerOptions != null && scannerOptions.containsKey("checkInverted")) {
@@ -275,7 +278,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
 
         //we have to run AI Model against the frame
         //detect there is any plu code is present or not
-        if ( scannerOptions != null )
+        if ( scannerOptions != null && enablePluMarkersDetection )
         {
           //Bitmap bitmap = null;
           try {
@@ -405,7 +408,7 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                       Set<String> tempResultsTexts = new HashSet<>();
                       if (!detectMarkerOnly)
                       {
-                        System.out.println("does it comes here");
+
                         float padding = 150f; // or your desired value
                         minX = Math.max(0, minX - padding);
                         minY = Math.max(0, minY - padding);
