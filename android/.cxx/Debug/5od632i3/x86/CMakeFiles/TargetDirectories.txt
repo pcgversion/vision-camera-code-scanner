@@ -1,0 +1,14 @@
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/CMakeFiles/barcode-decoder.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/CMakeFiles/edit_cache.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/CMakeFiles/rebuild_cache.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/CMakeFiles/list_install_components.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/CMakeFiles/install.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/CMakeFiles/install/local.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/CMakeFiles/install/strip.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/zxing-build/CMakeFiles/ZXing.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/zxing-build/CMakeFiles/edit_cache.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/zxing-build/CMakeFiles/rebuild_cache.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/zxing-build/CMakeFiles/list_install_components.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/zxing-build/CMakeFiles/install.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/zxing-build/CMakeFiles/install/local.dir
+/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/.cxx/Debug/5od632i3/x86/zxing-build/CMakeFiles/install/strip.dir

@@ -1,0 +1,35 @@
+{
+  "buildFiles": [
+    "/Users/qamartahir/mobile/ReposiNonConfirmity/node_modules/vision-camera-code-scanner/android/src/main/cpp/CMakeLists.txt",
+    "/Users/qamartahir/mobile/ReposiNonConfirmity/node_modules/vision-camera-code-scanner/android/src/main/cpp/zxing-cpp/core/CMakeLists.txt",
+    "/Users/qamartahir/mobile/ReposiNonConfirmity/node_modules/vision-camera-code-scanner/android/src/main/cpp/zxing-cpp/core/ZXingConfig.cmake.in"
+  ],
+  "cleanCommandsComponents": [
+    [
+      "/Users/qamartahir/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+      "-C",
+      "/Users/qamartahir/mobile/ReposiNonConfirmity/node_modules/vision-camera-code-scanner/android/.cxx/Debug/1j63w2d5/armeabi-v7a",
+      "clean"
+    ]
+  ],
+  "buildTargetsCommandComponents": [
+    "/Users/qamartahir/Library/Android/sdk/cmake/3.22.1/bin/ninja",
+    "-C",
+    "/Users/qamartahir/mobile/ReposiNonConfirmity/node_modules/vision-camera-code-scanner/android/.cxx/Debug/1j63w2d5/armeabi-v7a",
+    "{LIST_OF_TARGETS_TO_BUILD}"
+  ],
+  "libraries": {
+    "ZXing::@8a766561bb959f3820ac": {
+      "artifactName": "ZXing",
+      "abi": "armeabi-v7a",
+      "output": "/Users/qamartahir/mobile/ReposiNonConfirmity/node_modules/vision-camera-code-scanner/android/.cxx/Debug/1j63w2d5/armeabi-v7a/zxing-build/libZXing.a",
+      "runtimeFiles": []
+    },
+    "barcode-decoder::@6890427a1f51a3e7e1df": {
+      "artifactName": "barcode-decoder",
+      "abi": "armeabi-v7a",
+      "output": "/Users/qamartahir/mobile/ReposiNonConfirmity/node_modules/vision-camera-code-scanner/android/build/intermediates/cxx/Debug/1j63w2d5/obj/armeabi-v7a/libbarcode-decoder.so",
+      "runtimeFiles": []
+    }
+  }
+}

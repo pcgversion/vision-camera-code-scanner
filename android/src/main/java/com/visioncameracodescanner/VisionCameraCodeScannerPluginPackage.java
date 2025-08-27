@@ -15,15 +15,17 @@ public class VisionCameraCodeScannerPluginPackage implements ReactPackage {
   @NonNull
   @org.jetbrains.annotations.NotNull
   @Override
-  public List<NativeModule> createNativeModules(@NonNull @org.jetbrains.annotations.NotNull ReactApplicationContext reactContext) {
-    FrameProcessorPlugin.register(new VisionCameraCodeScannerPlugin());
+  public List<NativeModule> createNativeModules(
+      @NonNull @org.jetbrains.annotations.NotNull ReactApplicationContext reactContext) {
+    FrameProcessorPlugin.register(new VisionCameraCodeScannerPlugin(reactContext));
     return Collections.emptyList();
   }
 
   @NonNull
   @org.jetbrains.annotations.NotNull
   @Override
-  public List<ViewManager> createViewManagers(@NonNull @org.jetbrains.annotations.NotNull ReactApplicationContext reactContext) {
+  public List<ViewManager> createViewManagers(
+      @NonNull @org.jetbrains.annotations.NotNull ReactApplicationContext reactContext) {
     return Collections.emptyList();
   }
 }

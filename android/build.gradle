@@ -19,6 +19,13 @@ def safeExtGet(prop, fallback) {
 
 android {
     compileSdkVersion safeExtGet('compileSdkVersion', 30)
+    //Added by Qamar
+    externalNativeBuild {
+            cmake {
+                path "src/main/cpp/CMakeLists.txt"
+            }
+        }
+
     ndkVersion "21.4.7075529"
     defaultConfig {
         minSdkVersion safeExtGet('minSdkVersion', 21)
@@ -40,9 +47,21 @@ android {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    // //Added by Ritesh
+    // repositories {
+    //     flatDir {
+    //         dirs 'libs'
+    //     }
+    // }
 }
 
 repositories {
+
+//    flatDir {
+//         dirs 'libs'
+//    }
+
+
     mavenLocal()
     maven {
         // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
@@ -50,6 +69,8 @@ repositories {
     }
     google()
     jcenter()
+
+    
 }
 
 dependencies {
@@ -59,5 +80,19 @@ dependencies {
     //implementation "androidx.camera:camera-core:1.1.0-alpha08"
     implementation "androidx.camera:camera-core:1.2.3"
     //implementation 'com.google.mlkit:barcode-scanning:17.0.2'
-    implementation 'com.google.mlkit:barcode-scanning:17.2.0'
+    //implementation 'com.google.mlkit:barcode-scanning:17.2.0' //disabled by Ritesh
+    
+    //Following added by Ritesh
+    implementation 'com.google.mlkit:barcode-scanning:17.0.2'
+    implementation 'com.google.zxing:core:3.5.2'
+    //implementation "io.github.zxing-cpp:android:2.3.0"// this one is used currently
+
+    implementation 'org.tensorflow:tensorflow-lite:2.15.0'
+    implementation 'org.tensorflow:tensorflow-lite-support:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-task-vision:0.4.4'
+    // Import the GPU delegate plugin Library for GPU inference
+    implementation 'org.tensorflow:tensorflow-lite-gpu-delegate-plugin:0.4.4'
+    implementation 'org.tensorflow:tensorflow-lite-gpu:2.9.0'
+    //implementation(name: 'zxingcpp-release', ext: 'aar')
+    implementation project(':openCV')
 }
