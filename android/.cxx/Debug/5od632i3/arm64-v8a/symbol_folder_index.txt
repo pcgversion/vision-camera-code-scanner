@@ -1,1 +1,0 @@
-/Users/qamartahir/mobile/Reposi41xZxingNonconf/node_modules/vision-camera-code-scanner/android/build/intermediates/cxx/Debug/5od632i3/obj/arm64-v8a

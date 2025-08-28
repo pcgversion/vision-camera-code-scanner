@@ -1,3 +1,0 @@
-/Users/qamartahir/mobile/Reposi41xJuly8/node_modules/vision-camera-code-scanner/android/src/main/cpp/CMakeLists.txt
-/Users/qamartahir/mobile/Reposi41xJuly8/node_modules/vision-camera-code-scanner/android/src/main/cpp/zxing-cpp/core/CMakeLists.txt
-/Users/qamartahir/mobile/Reposi41xJuly8/node_modules/vision-camera-code-scanner/android/src/main/cpp/zxing-cpp/core/ZXingConfig.cmake.in
