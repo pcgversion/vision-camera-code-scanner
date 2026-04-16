@@ -185,6 +185,10 @@ public class VisionCameraCodeScanner: FrameProcessorPlugin {
                             let angle = (detection["angle"] as? NSNumber)?.floatValue
                         else { continue }
 
+                        if confidence < 0.9 {
+                                continue
+                         }
+
                         let cornerPoints = [
                             CGPoint(x: CGFloat(x1), y: CGFloat(y1)),
                             CGPoint(x: CGFloat(x2), y: CGFloat(y2)),
