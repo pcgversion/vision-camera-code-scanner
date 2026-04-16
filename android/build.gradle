@@ -19,7 +19,7 @@ def safeExtGet(prop, fallback) {
 
 android {
     compileSdkVersion safeExtGet('compileSdkVersion', 30)
-    ndkVersion "21.4.7075529"
+    //ndkVersion "21.4.7075529"
       //Added by Qamar
     externalNativeBuild {
             cmake {
