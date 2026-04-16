@@ -348,6 +348,10 @@ public class VisionCameraCodeScannerPlugin extends FrameProcessorPlugin {
                     String classId = (String) detection.get("classId");
                     float angle = ((Number) detection.get("angle")).floatValue();
 
+                    if (confidence < 0.9f) {
+                      continue;
+                    }
+
                     //Compute min/max for the original points
                     float minX = Math.min(Math.min(x1, x2), Math.min(x3, x4));
                     float minY = Math.min(Math.min(y1, y2), Math.min(y3, y4));
